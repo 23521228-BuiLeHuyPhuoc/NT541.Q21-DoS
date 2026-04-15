@@ -65,10 +65,10 @@ git add .
 # Ghi chú nội dung đã làm (viết ngắn gọn, không dấu hoặc tiếng Anh)
 git commit -m "Mo ta ngan gon cong viec da lam"
 ```
-## Ví dụ:
-## cd NT541.Q21-DDoS
-## git add .
-## git commit -m "Phước mới làm xong tính năng tạo topology"
+ Ví dụ:
+ cd NT541.Q21-DDoS
+ git add .
+ git commit -m "Phước mới làm xong tính năng tạo topology"
 
 ---
 
