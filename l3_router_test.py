@@ -22,9 +22,9 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         # --- CAU HINH MANG ---
         self.mac = '00:00:00:00:00:FE'
         self.arp_table = {}
-        # Port tren s2: port1=s1 (10.0.1.x), port2=s3 (10.0.2.x)
-        self.routes = {'10.0.1.': 1, '10.0.2.': 2}
-        self.gateways = ['10.0.1.1', '10.0.2.1']
+        # Port tren s2: port1=s1 (10.0.1.x), port2=s3 (10.0.2.x), port3=s4 (10.0.3.x), port4=s5 (10.0.4.x)
+        self.routes = {'10.0.1.': 1, '10.0.2.': 2, '10.0.3.': 3, '10.0.4.': 4}
+        self.gateways = ['10.0.1.1', '10.0.2.1', '10.0.3.1', '10.0.4.1']
         self.dps = {}
         
         # --- BIEN THONG KE ENTROPY ---
@@ -38,8 +38,13 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.ENTROPY_LOW = 1.5        # < 1.5: DoS IP co dinh
         
         # Whitelist: cac IP hop le khong tham gia vao tinh Entropy va khong bi block
-        # h_web1=10.0.2.10 (target server), h_ext1=10.0.1.20 (legitimate client)
-        self.WHITELIST_SRC = {'10.0.2.10', '10.0.1.20'}
+        # Cac may thuoc Internal, DMZ, PC zone va ext1
+        self.WHITELIST_SRC = {
+            '10.0.2.10', '10.0.2.11', # DMZ (web1, dns1)
+            '10.0.3.10', '10.0.3.11', # DB/App
+            '10.0.4.10', '10.0.4.11', # PC1, PC2
+            '10.0.1.20'               # ext1
+        }
         
         # --- KET NOI INFLUXDB ---
         if HAS_INFLUX:
@@ -115,16 +120,17 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                         )
                         dp.send_msg(mod_drop)
                         
-                        # Buoc 2: ALLOW ext1 (10.0.1.20) voi priority cao hon (60)
-                        # Flow nay override DROP ALL, dam bao ext1 van di qua
-                        match_ext1 = parser.OFPMatch(eth_type=0x0800, ipv4_src='10.0.1.20')
-                        mod_allow = parser.OFPFlowMod(
-                            datapath=dp, priority=60, match=match_ext1,
-                            instructions=[],  # GOTO_TABLE mac dinh (forward binh thuong)
-                            hard_timeout=10
-                        )
-                        dp.send_msg(mod_allow)
-                        self.logger.info(" => Da cai flow ALLOW cho ext1 (10.0.1.20) priority=60")
+                        # Buoc 2: ALLOW cac host trong Whitelist voi priority cao hon (60)
+                        # Flow nay override DROP ALL, dam bao cac host hop le van di qua duoc
+                        for wl_ip in self.WHITELIST_SRC:
+                            match_wl = parser.OFPMatch(eth_type=0x0800, ipv4_src=wl_ip)
+                            mod_allow = parser.OFPFlowMod(
+                                datapath=dp, priority=60, match=match_wl,
+                                instructions=[],  # GOTO_TABLE mac dinh (forward binh thuong)
+                                hard_timeout=10
+                            )
+                            dp.send_msg(mod_allow)
+                        self.logger.info(" => Da cai flow ALLOW cho toan bo Whitelist priority=60")
                     
                     self.src_ip_window.clear()
 
