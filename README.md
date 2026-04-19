@@ -1,161 +1,109 @@
-# 🗺️  Đây là những file mình chỉnh sửa:
+# ⚔️ Hướng Dẫn Kịch Bản Giả Lập Tấn Công DDoS (Mininet)
 
-- `topology_nhom4.py`
-- `topology_nhom4_giaodien.mn`
+Tài liệu này hướng dẫn cách sử dụng script để giả lập tấn công **SYN Flood** trong môi trường SDN (Mininet).
+Kịch bản gồm 3 bước chính:
 
-Hai file này phục vụ cho việc chạy và chỉnh sửa sơ đồ mạng của hệ thống. Dưới đây là hướng dẫn chi tiết cách sử dụng.
-
----
-
-## 1. Phân biệt chức năng 2 file
-
-### **File `topology_nhom4_giaodien.mn` (Bản vẽ giao diện)**
-
-Đây là file save của công cụ **MiniEdit**.  
-Dùng khi bạn muốn:
-
-- Xem sơ đồ mạng trực quan  
-- Kéo thả thêm/bớt thiết bị  
-- Chỉnh sửa IP / Link / Switch / Host  
+* Khởi động Web Server
+* Tạo lưu lượng truy cập hợp lệ
+* Phát động tấn công
 
 ---
 
-### **File `topology_nhom4.py` (File thực thi code)**
+## 1. Chuẩn bị & Chỉnh sửa Script (`attack_scenario.sh`)
 
-Đây là file Python được export từ MiniEdit.  
-Mininet sẽ đọc file này để:
+### ⚠️ Lưu ý quan trọng
 
-- Khởi tạo topology mạng ảo  
-- Tạo switch / host / link tương ứng  
-- Kết nối với controller Ryu  
+Trong Mininet, nếu bạn chạy trực tiếp lệnh như `iperf` hoặc `hping3`, chúng sẽ chạy trên **máy thật (host Ubuntu)** thay vì **host ảo trong Mininet**.
 
-> **Lưu ý:** Khi chạy test Firewall/Routing/DDoS Detection thì luôn dùng file `.py`.
+👉 Vì vậy, cần thêm **tên host (ví dụ: `h_web1`, `h_ext1`, `h_att1`) vào trước mỗi lệnh** để Mininet thực thi đúng.
 
 ---
 
-## 2. Cách mở file `.mn` để chỉnh sửa topology
+### 📄 Tạo file script
 
-> ⚠️ **LƯU Ý QUAN TRỌNG:**  
-> MiniEdit bị lỗi nếu mở bằng Python 3.  
-> Nếu dùng `python3`, file save có thể bị trắng (**0 byte**).  
-> **Bắt buộc dùng `python2`.**
-
-### Bước 1: Mở MiniEdit
+Tạo file `attack_scenario.sh` (đặt cùng thư mục với file topology `.py`) và dán nội dung sau:
 
 ```bash
-sudo python2 ~/mininet/examples/miniedit.py
+#!/bin/bash
+# Kịch bản giả lập tấn công DDoS trong Mininet
+# Chạy bằng lệnh: mininet> source attack_scenario.sh
+
+DES_IP="10.0.2.10"
+
+echo "[1] Khoi dong Web Server tren h_web1 (background)..."
+h_web1 iperf -s -p 80 &
+sleep 2
+
+echo "[2] Client hop le (h_ext1) dang truy cap Web..."
+h_ext1 iperf -c $DES_IP -p 80 -t 300 &
+sleep 10 
+
+echo "[3] Attacker (h_att1) bat dau SYN Flood!"
+h_att1 hping3 -S -p 80 --flood $DES_IP &
+
+# (Optional) Bat DDoS manh hon:
+# h_att2 hping3 -S -p 80 --flood $DES_IP &
 ```
 
 ---
 
-### Bước 2: Open file topology giao diện
+## 2. Cách chạy kịch bản
 
-Trên menu chọn:
-
-```text
-File → Open
-```
-
-Sau đó chọn file:
-
-```text
-topology_nhom4_giaodien.mn
-```
+⚠️ **Không chạy bằng `bash attack_scenario.sh` ngoài terminal.**
+Script phải được chạy **bên trong Mininet CLI**.
 
 ---
 
-### Bước 3: Chỉnh sửa topology
+### 🔹 Bước 1: Khởi động Ryu Controller
 
-Bạn có thể:
+Mở Terminal 1:
 
-- Thêm switch / host  
-- Xóa node  
-- Chỉnh IP  
-- Chỉnh băng thông link  
-
----
-
-### Bước 4: Save lại
-
-```text
-File → Save
+```bash
+ryu-manager <ten_file_controller>.py
 ```
 
 ---
 
-### Bước 5: Export file Python mới
+### 🔹 Bước 2: Khởi động Mininet
 
-```text
-File → Export Level 2 Script
-```
-
-Thao tác này sẽ sinh lại file `.py` mới tương ứng.
-
----
-
-## 3. Cách chạy topology mạng
-
-Nếu chỉ cần chạy mạng để test hệ thống thì **không cần mở file `.mn`**.
-
-### Bước 1: Xóa toàn bộ network cũ
+Mở Terminal 2:
 
 ```bash
 sudo mn -c
+sudo python <ten_file_topology>.py
 ```
 
 ---
 
-### Bước 2: Chạy topology
+### 🔹 Bước 3: Chạy kịch bản
+
+Trong giao diện `mininet>`:
 
 ```bash
-sudo python topology_nhom4.py
+source attack_scenario.sh
 ```
 
 ---
 
-### Bước 3: Kiểm tra kết nối
+## 3. Dấu hiệu chạy thành công
 
-Khi terminal hiện:
+Sau khi chạy, bạn sẽ thấy:
 
-```bash
-mininet>
-```
+1. ✅ Web Server (`h_web1`) chạy ở port 80
+2. ✅ Client hợp lệ (`h_ext1`) gửi/nhận dữ liệu bình thường
+3. ⚠️ Attacker (`h_att1`) bắt đầu SYN Flood
 
-thì topology đã chạy thành công.
+👉 Nếu mở Terminal của Ryu Controller, bạn sẽ thấy:
 
-Test ping toàn mạng:
-
-```bash
-pingall
-```
+* Lưu lượng tăng đột biến
+* Hệ thống detection (nếu có) bắt đầu cảnh báo
 
 ---
 
-## 4. Thông tin commit hiện tại
+## 4. Ghi chú thêm
 
-Hai file topology được thêm bởi commit:
-
-```text
-Them file giao dien va file python topology
-```
-
-Thời gian:
-
-```text
-2 hours ago
-```
+* Có thể mở rộng thành DDoS bằng nhiều attacker (`h_att2`, `h_att3`, ...)
+* Có thể thay `iperf` bằng HTTP server thật (Apache/Nginx) nếu cần demo thực tế hơn
+* Có thể thêm module phát hiện/mitigation trong controller
 
 ---
-
-## 🎯 Tóm tắt nhanh
-
-| File | Vai trò |
-|------|--------|
-| `topology_nhom4_giaodien.mn` | File chỉnh sửa giao diện topology |
-| `topology_nhom4.py` | File chạy topology bằng Mininet |
-| `python2` | Dùng để mở MiniEdit |
-| `python` | Dùng để chạy topology |
-
----
-
-**Chúc Nhóm 4 làm việc hiệu quả với topology! 🚀**
