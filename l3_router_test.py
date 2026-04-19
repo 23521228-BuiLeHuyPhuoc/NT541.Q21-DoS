@@ -48,12 +48,12 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 self.influx_client = InfluxDBClient(host='localhost', port=8086, database='sdn_monitor')
                 self.influx_client.create_database('sdn_monitor')
                 self.influx_client.write_points([{"measurement": "test", "fields": {"ok": 1}}])
-                self.logger.info("[INFLUXDB] Ket noi thanh cong!")
+                self.logger.info("[INFLUXDB] Da ket noi thanh cong den InfluxDB (sdn_monitor)")
             except Exception as e:
-                self.logger.error("[INFLUXDB] Loi ket noi: %s", e)
+                self.logger.error("[INFLUXDB] Khong the ket noi den InfluxDB: %s", e)
                 self.influx_client = None
         else:
-            self.logger.warning("[INFLUXDB] Chua cai: pip install influxdb")
+            self.logger.warning("[INFLUXDB] Thu vien influxdb chua duoc cai dat. Chay: pip install influxdb")
 
         # --- FLOW STATS ---
         self.flow_stats = {}
@@ -91,22 +91,22 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     p = count / total
                     entropy -= p * math.log2(p)
 
-                self.logger.info("[ENTROPY] %.2f | window=%d | unique=%d", entropy, total, len(ip_counts))
+                self.logger.info("[ENTROPY] Gia tri entropy = %.2f | Tong goi = %d | So IP duy nhat = %d", entropy, total, len(ip_counts))
 
                 if entropy < self.ENTROPY_LOW:
                     self.attack_status = 1
-                    self.logger.warning("[!] DoS FIXED IP (entropy=%.2f)", entropy)
+                    self.logger.warning("[CANH BAO] Phat hien tan cong DoS bang IP co dinh! Entropy = %.2f (nguong < %.2f)", entropy, self.ENTROPY_LOW)
                     for ip, count in ip_counts.items():
                         if (count / total) > 0.20 and ip not in self.blocked_ips:
                             if ip in self.WHITELIST_SRC:
                                 continue
-                            self.logger.warning(" => Block %s (%d pkts)", ip, count)
+                            self.logger.warning("[BLOCK] Chan IP %s — da gui %d goi (chiem %.1f%% tong traffic)", ip, count, (count/total)*100)
                             self._block_ip(ip)
                     self.src_ip_window.clear()
 
                 elif entropy > self.ENTROPY_HIGH:
                     self.attack_status = 2
-                    self.logger.warning("[!] DoS SPOOFED IP (entropy=%.2f)", entropy)
+                    self.logger.warning("[CANH BAO] Phat hien tan cong DoS bang IP gia mao! Entropy = %.2f (nguong > %.2f)", entropy, self.ENTROPY_HIGH)
                     for dp in self.dps.values():
                         parser = dp.ofproto_parser
                         # DROP all IPv4
@@ -125,7 +125,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 else:
                     self.attack_status = 0
             else:
-                self.logger.info("[ENTROPY] Chua du mau: %d/100", window_size)
+                pass
 
             # --- GUI INFLUXDB ---
             if self.influx_client:
@@ -142,7 +142,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                         }
                     }])
                 except Exception as e:
-                    self.logger.error("[INFLUXDB] Loi ghi: %s", e)
+                    self.logger.error("[INFLUXDB] Khong the ghi du lieu vao InfluxDB: %s", e)
 
     def _block_ip(self, bad_ip):
         self.blocked_ips.add(bad_ip)
@@ -157,7 +157,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         def unblock():
             hub.sleep(61)
             self.blocked_ips.discard(bad_ip)
-            self.logger.info("[UNBLOCK] %s", bad_ip)
+            self.logger.info("[UNBLOCK] Da go chan IP %s sau 60 giay", bad_ip)
         hub.spawn(unblock)
 
     # ==========================================
@@ -188,7 +188,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     if pps > 0:
                         sum_pps += pps
                     if pps > 500 and src not in self.blocked_ips:
-                        self.logger.warning("[!] HIGH PPS=%d from %s => Block!", int(pps), src)
+                        self.logger.warning("[BLOCK] Chan IP %s — toc do qua cao: %d goi/giay (nguong: 500)", src, int(pps))
                         self._block_ip(src)
             self.flow_stats[key] = (stat.packet_count, now)
         self.total_pps = int(sum_pps)
