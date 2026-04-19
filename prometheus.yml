@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 3s      # Thu thap du lieu moi 3 giay
+  evaluation_interval: 3s
+
+scrape_configs:
+  - job_name: 'ryu-sdn-controller'
+    static_configs:
+      - targets: ['localhost:9100']   # Port cua Ryu Prometheus metrics
+        labels:
+          instance: 'ryu-controller'
