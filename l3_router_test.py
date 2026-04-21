@@ -25,17 +25,18 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.gateways = ['10.0.1.1', '10.0.2.1', '10.0.3.1', '10.0.4.1']
         self.dps = {}
 
-        # --- ENTROPY ---
-        self.WINDOW_SIZE = 1000
-        self.src_ip_window = []
-        self.src_mac_window = []
-        self.blocked_ips = set()
-        self.blocked_macs = set()
-        self.packet_rate = 0
-        self.ENTROPY_HIGH = 8.0
-        self.ENTROPY_LOW = 1.5
-        self.attack_status = 0
-
+      # --- CAU HINH ENTROPY VA THEO DOI TRAFFIC ---
+        self.WINDOW_SIZE = 1000            # SO LUONG GOI LUU TRONG WINDOW
+        self.src_ip_window = []            # DANH SACH IP NGUON GAN DAY
+        self.src_mac_window = []           # DANH SACH MAC TUONG UNG
+        self.blocked_ips = set()           # TAP IP DA BI CHAN
+        self.blocked_macs = set()          # TAP MAC DA BI CHAN
+        self.packet_rate = 0               # DEM SO GOI TRONG MOI CHU KY
+        self.ENTROPY_HIGH = 8.0            # NGUONG CAO (NGHI NGO SPOOF)
+        self.ENTROPY_LOW = 1.5             # NGUONG THAP (NGHI NGO 1 IP TAN CONG)
+        self.attack_status = 0             # 0: BINH THUONG, 1: TAN CONG IP, 2: SPOOF
+        
+        # DANH SACH IP HOP LE (KHONG BI CHAN)
         self.WHITELIST_SRC = {
             '10.0.2.10', '10.0.2.11',
             '10.0.3.10', '10.0.3.11',
@@ -72,9 +73,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         elif dp.id in self.dps:
             del self.dps[dp.id]
 
-    # ==========================================
-    # ENTROPY & MITIGATION
-    # ==========================================
+# KIEM TRA ENTROPY DE PHAT HIEN TRAFFIC BAT THUONG 
     def _monitor_entropy(self):
         while True:
             hub.sleep(3)
@@ -123,7 +122,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             else:
                 pass
 
-            # --- GUI INFLUXDB ---
+           # --- GUI DU LIEU LEN INFLUXDB ---
             if self.influx_client:
                 try:
                     self.influx_client.write_points([{
@@ -173,9 +172,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             self.logger.info("[UNBLOCK] Da go chan MAC %s sau 60 giay", bad_mac)
         hub.spawn(unblock)
 
-    # ==========================================
-    # FLOW STATS
-    # ==========================================
+   #  THEO DOI FLOW DE TINH TOC DO GOI
     def _monitor_flows(self):
         while True:
             for dp in self.dps.values():
@@ -206,9 +203,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             self.flow_stats[key] = (stat.packet_count, now)
         self.total_pps = int(sum_pps)
 
-    # ==========================================
-    # PACKET IN
-    # ==========================================
+     # XU LY PACKET IN TU SWITCH
+    
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         msg = ev.msg
