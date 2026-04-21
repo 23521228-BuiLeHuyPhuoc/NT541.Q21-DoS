@@ -6,17 +6,17 @@
 
 ---
 
-## 👤 THANH VIEN 1: LEADER + RESEARCH SCIENTIST (Tran Minh Khoa / [NAME])
+## 👤 THÀNH VIÊN 1: LEADER + RESEARCH SCIENTIST (Trần Minh Khoa / [TÊN])
 
 **Vai trò:** Trưởng nhóm, định hướng khoa học, đảm bảo chất lượng  
 **Kinh nghiệm mong muốn:** Giỏi tổng hợp, thành thạo writing, hiểu DL/ML  
-**Effort:** 30% thực hành + 70% quản lý/research
+**Nỗ lực:** 30% thực hành + 70% quản lý/research
 
-### Task 1.1: Survey & Tổng hợp Bài Báo (Week 1-2)
+### Task 1.1: Survey & Tổng hợp Bài Báo (Tuần 1-2)
 
-**Deadline:** Hết tuần 2  
-**Input:** 15+ papers từ REFERENCES_PAPERS.md  
-**Output:** `RESEARCH_SURVEY.md` (3000+ words)
+**Thời hạn:** Hết tuần 2  
+**Đầu vào:** 15+ papers từ REFERENCES_PAPERS.md  
+**Đầu ra:** `RESEARCH_SURVEY.md` (3000+ từ)
 
 **Checklist:**
 
@@ -83,20 +83,20 @@
         - 5+ simultaneous attack types?
 ```
 
-**Deliverable 1.1:** `RESEARCH_SURVEY.md`
+**Sản phẩm 1.1:** `RESEARCH_SURVEY.md`
 
-- 3000+ words
-- 15+ papers cited (IEEE format)
+- 3000+ từ
+- 15+ papers được trích dẫn (định dạng IEEE)
 - Comparison table (entropy vs ML vs DL)
 - Feature list extracted from all papers
 - Dataset recommendation (CICIDS2017 + UNSW-NB15 for validation)
 
 ---
 
-### Task 1.2: Define Evaluation Protocol (Week 1-2)
+### Task 1.2: Định nghĩa Protocol Đánh giá (Tuần 1-2)
 
-**Deadline:** Hết tuần 2  
-**Output:** `EVALUATION_PROTOCOL.md`
+**Thời hạn:** Hết tuần 2  
+**Đầu ra:** `EVALUATION_PROTOCOL.md`
 
 **Checklist:**
 
@@ -169,21 +169,21 @@
     [ ] 6: Example calculation (worked example)
 ```
 
-**Deliverable 1.2:** `EVALUATION_PROTOCOL.md`
+**Sản phẩm 1.2:** `EVALUATION_PROTOCOL.md`
 
-- Precise metric definitions
-- Dataset split rationale
-- Threshold selection methodology
-- Acceptance criteria
-- Example calculations
+- Định nghĩa metrics chính xác
+- Lý do chia tập dữ liệu
+- Phương pháp chọn threshold
+- Tiêu chí chấp nhận
+- Tính toán ví dụ
 
 ---
 
-### Task 1.3: Code Review & QA Oversight (Week 3-5)
+### Task 1.3: Code Review & Giám sát QA (Tuần 3-5)
 
-**Ongoing throughout project**
+**Diễn ra trong toàn bộ dự án**
 
-**Checklist (每周 weekly):**
+**Danh sách kiểm tra (Hàng tuần):**
 
 ```
 Week 3:
@@ -214,14 +214,14 @@ Week 5:
       - All deliverables present?
 ```
 
-**Deliverable 1.3:** `CODE_REVIEW_CHECKLISTS.md` (each week)
+**Sản phẩm 1.3:** `CODE_REVIEW_CHECKLISTS.md` (mỗi tuần)
 
 ---
 
-### Task 1.4: Final Report Writing (Week 4-5)
+### Task 1.4: Viết báo cáo cuối cùng (Tuần 4-5)
 
-**Deadline:** End of week 5  
-**Output:** `FINAL_REPORT.md` or PDF (30+ pages)
+**Thời hạn:** Cuối tuần 5  
+**Đầu ra:** `FINAL_REPORT.md` hoặc PDF (30+ trang)
 
 **Checklist:**
 
@@ -274,21 +274,21 @@ Week 5:
 [ ] Spell-check & grammar check
 ```
 
-**Deliverable 1.4:** Final Report (30+ pages PDF)
+**Sản phẩm 1.4:** Báo cáo cuối cùng (30+ trang PDF)
 
 ---
 
-## 👤 THANH VIEN 2: DATA & LAB ENGINEER (Hoang Minh Duc / [NAME])
+## 👤 THÀNH VIÊN 2: DATA & LAB ENGINEER (Hoàng Minh Đức / [TÊN])
 
 **Vai trò:** Thu thập & xử lý dữ liệu, làm sạch, feature extraction  
 **Kinh nghiệm mong muốn:** Thành thạo Python, pcap parsing, Linux  
 **Effort:** 95% thực hành + 5% documentation
 
-### Task 2.1: Lab Environment Setup (Week 1)
+### Task 2.1: Cài đặt Lab Environment (Tuần 1)
 
-**Deadline:** Hết tuần 1, tất cả hosts pingable  
-**Input:** topology_nhom4.py, l3_router_test.py  
-**Output:** Running Mininet + Ryu, traffic capture working
+**Thời hạn:** Hết tuần 1, tất cả hosts ping được  
+**Đầu vào:** topology_nhom4.py, l3_router_test.py  
+**Đầu ra:** Mininet + Ryu chạy được, bắt traffic hoạt động
 
 **Checklist:**
 
@@ -338,18 +338,18 @@ Week 5:
     - Troubleshooting common issues
 ```
 
-**Deliverable 2.1:**
+**Sản phẩm 2.1:**
 
-- `setup_environment.sh` (automated setup)
+- `setup_environment.sh` (tự động cài đặt)
 - `LAB_SETUP_GUIDE.md`
-- Verified running Mininet topology + Ryu controller
+- Đã xác minh Mininet + Ryu chạy được
 
 ---
 
-### Task 2.2: Normal Traffic Collection (Week 2)
+### Task 2.2: Thu thập lưu lượng bình thường (Tuần 2)
 
-**Deadline:** Hết tuần 2, ≥500MB normal pcap  
-**Output:** data/raw/normal\_\*.pcap files (3 scenarios)
+**Thời hạn:** Hết tuần 2, ≥500MB normal pcap  
+**Đầu ra:** data/raw/normal\_\*.pcap files (3 tình huống)
 
 **Checklist:**
 
@@ -411,19 +411,19 @@ Week 5:
         - normal_light.pcap
 ```
 
-**Deliverable 2.2:**
+**Sản phẩm 2.2:**
 
 - `data/raw/normal_baseline.pcap` (~150MB)
 - `data/raw/normal_mixed.pcap` (~200MB)
 - `data/raw/normal_light.pcap` (~5MB)
-- `logs/normal_*.log` (metadata)
+- `logs/normal_*.log` (siêu dữ liệu)
 
 ---
 
-### Task 2.3: DoS Attack Traffic Collection (Week 2-3)
+### Task 2.3: Thu thập lưu lượng tấn công DoS (Tuần 2-3)
 
-**Deadline:** Hết tuần 3, ≥500MB attack pcap (5 scenarios)  
-**Output:** data/raw/dos\_\*.pcap files (labeled)
+**Thời hạn:** Hết tuần 3, ≥500MB attack pcap (5 tình huống)  
+**Đầu ra:** data/raw/dos\_\*.pcap files (gắn nhãn)
 
 **Checklist:**
 
@@ -526,22 +526,22 @@ Week 5:
     [ ] Create: data/raw/DOS_FILES.txt listing all files + labels
 ```
 
-**Deliverable 2.3:**
+**Sản phẩm 2.3:**
 
-- `data/raw/dos_synflood.pcap` (~150MB, labeled FLOOD)
-- `data/raw/dos_udpflood.pcap` (~150MB, labeled FLOOD)
-- `data/raw/dos_spoof.pcap` (~150MB, labeled SPOOF)
-- `data/raw/dos_distributed.pcap` (~100MB, labeled FLOOD)
-- `data/raw/dos_stealthy.pcap` (~30MB, labeled FLOOD)
-- `logs/dos_*.log` (metadata + labels)
+- `data/raw/dos_synflood.pcap` (~150MB, nhãn FLOOD)
+- `data/raw/dos_udpflood.pcap` (~150MB, nhãn FLOOD)
+- `data/raw/dos_spoof.pcap` (~150MB, nhãn SPOOF)
+- `data/raw/dos_distributed.pcap` (~100MB, nhãn FLOOD)
+- `data/raw/dos_stealthy.pcap` (~30MB, nhãn FLOOD)
+- `logs/dos_*.log` (siêu dữ liệu + nhãn)
 
 ---
 
-### Task 2.4: Feature Extraction Pipeline (Week 3-4)
+### Task 2.4: Pipeline trích xuất tính năng (Tuần 3-4)
 
-**Deadline:** Hết tuần 4, ready for ML training  
-**Input:** all pcap files from 2.2 + 2.3  
-**Output:** CSV files with extracted features
+**Thời hạn:** Hết tuần 4, sẵn sàng huấn luyện ML  
+**Đầu vào:** tất cả pcap files từ 2.2 + 2.3  
+**Đầu ra:** File CSV với tính năng được trích xuất
 
 **Checklist:**
 
@@ -617,20 +617,20 @@ Week 5:
     [ ] Known issues: if any
 ```
 
-**Deliverable 2.4:**
+**Sản phẩm 2.4:**
 
-- `feature_extraction.py` (300+ lines, tested)
-- `data/features/flows_labeled_ALL.csv` (2.5M+ rows, 20+ columns)
+- `feature_extraction.py` (300+ dòng, đã test)
+- `data/features/flows_labeled_ALL.csv` (2.5M+ dòng, 20+ cột)
 - `data/features/VALIDATION_REPORT.txt`
 - `DATASET_DESCRIPTION.md`
 
 ---
 
-### Task 2.5: Data Preprocessing (Week 4)
+### Task 2.5: Tiền xử lý dữ liệu (Tuần 4)
 
-**Deadline:** Hết tuần 4, ready for ML training  
-**Input:** flows_labeled_ALL.csv  
-**Output:** train.csv, val.csv, test.csv (preprocessed + scaled)
+**Thời hạn:** Hết tuần 4, sẵn sàng huấn luyện ML  
+**Đầu vào:** flows_labeled_ALL.csv  
+**Đầu ra:** train.csv, val.csv, test.csv (đã tiền xử lý + chuẩn hóa)
 
 **Checklist:**
 
@@ -687,28 +687,28 @@ Week 5:
     [ ] Verify output files exist and have correct row counts
 ```
 
-**Deliverable 2.5:**
+**Sản phẩm 2.5:**
 
-- `preprocessing.py` (150+ lines)
+- `preprocessing.py` (150+ dòng)
 - `data/preprocessing/train.csv`
 - `data/preprocessing/val.csv`
 - `data/preprocessing/test.csv`
-- `scaler.pkl` (for later inference)
+- `scaler.pkl` (để sử dụng sau)
 - `PREPROCESSING_REPORT.txt`
 
 ---
 
-## 👤 THANH VIEN 3: ML BASELINE ENGINEER (Nguyen Van Tuan / [NAME])
+## 👤 THÀNH VIÊN 3: ML BASELINE ENGINEER (Nguyễn Văn Tuấn / [TÊN])
 
 **Vai trò:** Train machine learning models (RF, XGBoost, LightGBM)  
 **Kinh nghiệm mong muốn:** Thành thạo scikit-learn, XGBoost, hyperparameter tuning  
 **Effort:** 95% thực hành + 5% documentation
 
-### Task 3.1: Random Forest Training & Tuning (Week 3-4)
+### Task 3.1: Huấn luyện & Điều chỉnh Random Forest (Tuần 3-4)
 
-**Deadline:** Hết tuần 4  
-**Input:** train.csv, val.csv, test.csv (from Member 2)  
-**Output:** RF model + evaluation report
+**Thời hạn:** Hết tuần 4  
+**Đầu vào:** train.csv, val.csv, test.csv (từ Thành viên 2)  
+**Đầu ra:** Mô hình RF + báo cáo đánh giá
 
 **Checklist:**
 
@@ -789,21 +789,21 @@ Week 5:
         json.dump(results, open('results/rf_results.json', 'w'))
 ```
 
-**Deliverable 3.1:**
+**Sản phẩm 3.1:**
 
-- `ml_rf_train.py` (200+ lines)
+- `ml_rf_train.py` (200+ dòng)
 - `models/rf_model.pkl`
 - `results/rf_results.json` (metrics)
 - `plots/rf_feature_importance.png`
-- Training log
+- Nhật ký huấn luyện
 
 ---
 
-### Task 3.2: XGBoost & LightGBM Training (Week 4)
+### Task 3.2: Huấn luyện XGBoost & LightGBM (Tuần 4)
 
-**Deadline:** Hết tuần 4  
-**Input:** train.csv, val.csv, test.csv  
-**Output:** XGB + LGB models + evaluation
+**Thời hạn:** Hết tuần 4  
+**Đầu vào:** train.csv, val.csv, test.csv  
+**Đầu ra:** Mô hình XGB + LGB + đánh giá
 
 **Checklist:**
 
@@ -853,22 +853,22 @@ Week 5:
         - Confusion matrices (3 subplots)
 ```
 
-**Deliverable 3.2:**
+**Sản phẩm 3.2:**
 
-- `ml_xgboost_train.py` (200+ lines)
-- `ml_lightgbm_train.py` (200+ lines)
-- `ml_compare_baselines.py` (150+ lines)
+- `ml_xgboost_train.py` (200+ dòng)
+- `ml_lightgbm_train.py` (200+ dòng)
+- `ml_compare_baselines.py` (150+ dòng)
 - `models/xgb_model.pkl`, `models/lgb_model.pkl`
-- `results/ml_comparison.csv` (metrics comparison)
+- `results/ml_comparison.csv` (so sánh metrics)
 - `plots/roc_curves.png`, `plots/confusion_matrices.png`
 
 ---
 
-### Task 3.3: Real-time ML Inference (Week 4-5)
+### Task 3.3: Suy luận ML thực tế (Tuần 4-5)
 
-**Deadline:** Hết tuần 5  
-**Input:** trained ML models  
-**Output:** Real-time inference script + benchmark
+**Thời hạn:** Hết tuần 5  
+**Đầu vào:** Các mô hình ML đã huấn luyện  
+**Đầu ra:** Script suy luận thực tế + benchmark
 
 **Checklist:**
 
@@ -916,19 +916,19 @@ Week 5:
     - plots/ml_latency_throughput.png
 ```
 
-**Deliverable 3.3:**
+**Sản phẩm 3.3:**
 
-- `ml_realtime_inference.py` (150+ lines)
-- `ml_benchmark.py` (150+ lines)
+- `ml_realtime_inference.py` (150+ dòng)
+- `ml_benchmark.py` (150+ dòng)
 - `results/ml_realtime_benchmark.json`
 - `plots/ml_latency_throughput.png`
 
 ---
 
-### Task 3.4: Error Analysis & Documentation (Week 5)
+### Task 3.4: Phân tích lỗi & Tài liệu (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Output:** Error analysis report + ML documentation
+**Thời hạn:** Hết tuần 5  
+**Đầu ra:** Báo cáo phân tích lỗi + tài liệu ML
 
 **Checklist:**
 
@@ -972,25 +972,25 @@ Week 5:
         - Real-time feasible (<100ms latency)
 ```
 
-**Deliverable 3.4:**
+**Sản phẩm 3.4:**
 
-- `ml_error_analysis.py` (150+ lines)
-- `ML_RESULTS.md` (2000+ words)
+- `ml_error_analysis.py` (150+ dòng)
+- `ML_RESULTS.md` (2000+ từ)
 - `plots/fp_analysis.png`, `plots/fn_analysis.png`
 
 ---
 
-## 👤 THANH VIEN 4: DEEP LEARNING + REAL-TIME DETECTION (Pham Hoang Nam / [NAME])
+## 👤 THÀNH VIÊN 4: DEEP LEARNING + REAL-TIME DETECTION (Phạm Hoàng Nam / [TÊN])
 
 **Vai trò:** Implement DL models (CNN, LSTM, Autoencoder) + real-time integration  
 **Kinh nghiệm mong muốn:** Thành thạo TensorFlow/PyTorch, GPU programming  
 **Effort:** 95% thực hành + 5% documentation
 
-### Task 4.1: Data Preparation for DL (Week 3-4)
+### Task 4.1: Chuẩn bị dữ liệu cho DL (Tuần 3-4)
 
-**Deadline:** Hết tuần 4  
-**Input:** flows_labeled_ALL.csv (từ Member 2)  
-**Output:** Sequences ready for DL training
+**Thời hạn:** Hết tuần 4  
+**Đầu vào:** flows_labeled_ALL.csv (từ Thành viên 2)  
+**Đầu ra:** Các chuỗi sẵn sàng huấn luyện DL
 
 **Checklist:**
 
@@ -1030,18 +1030,18 @@ Week 5:
         - Save using pickle or h5
 ```
 
-**Deliverable 4.1:**
+**Sản phẩm 4.1:**
 
 - `dl_sequence_preparation.py`
-- Training sequences (X_train_seq.npy, y_train_seq.npy, etc.)
+- Chuỗi huấn luyện (X_train_seq.npy, y_train_seq.npy, v.v.)
 
 ---
 
-### Task 4.2: 1D-CNN Model Training (Week 4)
+### Task 4.2: Huấn luyện mô hình 1D-CNN (Tuần 4)
 
-**Deadline:** Hết tuần 4  
-**Input:** Training sequences  
-**Output:** CNN model + evaluation
+**Thời hạn:** Hết tuần 4  
+**Đầu vào:** Chuỗi huấn luyện  
+**Đầu ra:** Mô hình CNN + đánh giá
 
 **Checklist:**
 
@@ -1111,20 +1111,20 @@ Week 5:
         plt.savefig('plots/cnn_training_history.png')
 ```
 
-**Deliverable 4.2:**
+**Sản phẩm 4.2:**
 
-- `dl_cnn_train.py` (200+ lines)
+- `dl_cnn_train.py` (200+ dòng)
 - `models/cnn_model.h5`
 - `plots/cnn_training_history.png`
-- CNN evaluation metrics (JSON)
+- Metrics đánh giá CNN (JSON)
 
 ---
 
-### Task 4.3: LSTM Model Training (Week 4)
+### Task 4.3: Huấn luyện mô hình LSTM (Tuần 4)
 
-**Deadline:** Hết tuần 4  
-**Input:** Training sequences  
-**Output:** LSTM model + evaluation
+**Thời hạn:** Hết tuần 4  
+**Đầu vào:** Chuỗi huấn luyện  
+**Đầu ra:** Mô hình LSTM + đánh giá
 
 **Checklist:**
 
@@ -1149,19 +1149,19 @@ Week 5:
     [ ] Plot history: plots/lstm_training_history.png
 ```
 
-**Deliverable 4.3:**
+**Sản phẩm 4.3:**
 
-- `dl_lstm_train.py` (200+ lines)
+- `dl_lstm_train.py` (200+ dòng)
 - `models/lstm_model.h5`
 - `plots/lstm_training_history.png`
 
 ---
 
-### Task 4.4: Autoencoder (Unsupervised)Training (Week 4)
+### Task 4.4: Huấn luyện Autoencoder (Không giám sát) (Tuần 4)
 
-**Deadline:** Hết tuần 4  
-**Input:** Normal data only (unsupervised)  
-**Output:** Autoencoder model + threshold tuning
+**Thời hạn:** Hết tuần 4  
+**Đầu vào:** Chỉ dữ liệu bình thường (không giám sát)  
+**Đầu ra:** Mô hình Autoencoder + điều chỉnh threshold
 
 **Checklist:**
 
@@ -1203,19 +1203,19 @@ Week 5:
         - best_threshold to JSON
 ```
 
-**Deliverable 4.4:**
+**Sản phẩm 4.4:**
 
-- `dl_autoencoder_train.py` (200+ lines)
+- `dl_autoencoder_train.py` (200+ dòng)
 - `models/autoencoder_model.h5`
-- Autoencoder evaluation + threshold
+- Đánh giá Autoencoder + threshold
 
 ---
 
-### Task 4.5: DL Models Comparison (Week 4-5)
+### Task 4.5: So sánh mô hình DL (Tuần 4-5)
 
-**Deadline:** Hết tuần 5  
-**Input:** All 3 DL models  
-**Output:** Comparison report + best model selection
+**Thời hạn:** Hết tuần 5  
+**Đầu vào:** Cả 3 mô hình DL  
+**Đầu ra:** Báo cáo so sánh + lựa chọn mô hình tốt nhất
 
 **Checklist:**
 
@@ -1235,18 +1235,18 @@ Week 5:
     [ ] Recommendation: CNN best balance
 ```
 
-**Deliverable 4.5:**
+**Sản phẩm 4.5:**
 
 - `dl_compare.py`
-- Comparison table + plots
+- Bảng so sánh + biểu đồ
 
 ---
 
-### Task 4.6: Real-time DL Inference (Week 5)
+### Task 4.6: Suy luận DL thực tế (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Input:** Best DL model (CNN)  
-**Output:** Real-time inference script + benchmark
+**Thời hạn:** Hết tuần 5  
+**Đầu vào:** Mô hình DL tốt nhất (CNN)  
+**Đầu ra:** Script suy luận thực tế + benchmark
 
 **Checklist:**
 
@@ -1276,19 +1276,19 @@ Week 5:
     [ ] Batch processing: accumulate 10 sequences → predict together
 ```
 
-**Deliverable 4.6:**
+**Sản phẩm 4.6:**
 
-- `dl_realtime_inference.py` (150+ lines)
-- `dl_benchmark.py` (150+ lines)
+- `dl_realtime_inference.py` (150+ dòng)
+- `dl_benchmark.py` (150+ dòng)
 - `results/dl_realtime_benchmark.json`
 - `plots/dl_latency_throughput.png`
 
 ---
 
-### Task 4.7: DL Documentation (Week 5)
+### Task 4.7: Tài liệu DL (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Output:** DL results report
+**Thời hạn:** Hết tuần 5  
+**Đầu ra:** Báo cáo kết quả DL
 
 **Checklist:**
 
@@ -1302,24 +1302,24 @@ Week 5:
     [ ] Conclusion: DL captures temporal patterns better than ML baselines
 ```
 
-**Deliverable 4.7:**
+**Sản phẩm 4.7:**
 
-- `DL_RESULTS.md` (2000+ words)
-- All plots & diagrams
+- `DL_RESULTS.md` (2000+ từ)
+- Tất cả biểu đồ & sơ đồ
 
 ---
 
-## 👤 THANH VIEN 5: QA + TESTING + VISUALIZATION + PRESENTATION (Hoang Anh Duc / [NAME])
+## 👤 THÀNH VIÊN 5: QA + TESTING + VISUALIZATION + PRESENTATION (Hoàng Anh Đức / [TÊN])
 
 **Vai trò:** Test suite, dashboard visualization, slide preparation, Q&A script  
 **Kinh nghiệm mong muốn:** Thành thạo unittest/pytest, matplotlib/plotly, presentation  
-**Effort:** 70% thực hành + 30% presentation
+**Nỗ lực:** 70% thực hành + 30% thuyết trình
 
-### Task 5.1: Test Suite Development (Week 4-5)
+### Task 5.1: Phát triển Test Suite (Tuần 4-5)
 
-**Deadline:** Hết tuần 5  
-**Input:** All code from Members 2-4  
-**Output:** 50+ test cases, coverage report
+**Thời hạn:** Hết tuần 5  
+**Đầu vào:** Tất cả code từ Thành viên 2-4  
+**Đầu ra:** 50+ trường hợp test, báo cáo coverage
 
 **Checklist:**
 
@@ -1378,19 +1378,19 @@ Week 5:
     [ ] Identify uncovered code, write more tests
 ```
 
-**Deliverable 5.1:**
+**Sản phẩm 5.1:**
 
-- `test_*.py` files (50+ tests total)
-- `coverage/index.html` (coverage report ≥80%)
-- `TEST_REPORT.txt` (summary)
+- File `test_*.py` (50+ tests tổng cộng)
+- `coverage/index.html` (báo cáo coverage ≥80%)
+- `TEST_REPORT.txt` (tóm tắt)
 
 ---
 
-### Task 5.2: Visualization & Dashboards (Week 5)
+### Task 5.2: Trực quan hóa & Dashboard (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Input:** All results from Members 1-4  
-**Output:** 7+ plots + dashboard
+**Thời hạn:** Hết tuần 5  
+**Đầu vào:** Tất cả kết quả từ Thành viên 1-4  
+**Đầu ra:** 7+ biểu đồ + dashboard
 
 **Checklist:**
 
@@ -1508,18 +1508,18 @@ Week 5:
     [ ] Save: dashboard.html
 ```
 
-**Deliverable 5.2:**
+**Sản phẩm 5.2:**
 
-- `visualization.py` (300+ lines)
-- `plots/roc_curves_all.png`, `plots/pr_curves_all.png`, ... (7+ plots)
-- `dashboard.html` (optional, interactive)
+- `visualization.py` (300+ dòng)
+- `plots/roc_curves_all.png`, `plots/pr_curves_all.png`, ... (7+ biểu đồ)
+- `dashboard.html` (tùy chọn, tương tác)
 
 ---
 
-### Task 5.3: Comprehensive Test Report (Week 5)
+### Task 5.3: Báo cáo Test toàn diện (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Output:** TEST_REPORT.md (detailed testing documentation)
+**Thời hạn:** Hết tuần 5  
+**Đầu ra:** TEST_REPORT.md (tài liệu test chi tiết)
 
 **Checklist:**
 
@@ -1551,16 +1551,16 @@ Week 5:
         - Test case | Inputs | Expected | Actual | Result | Time (ms)
 ```
 
-**Deliverable 5.3:**
+**Sản phẩm 5.3:**
 
-- `TEST_REPORT.md` (1000+ words)
+- `TEST_REPORT.md` (1000+ từ)
 
 ---
 
-### Task 5.4: Presentation Preparation (Week 5)
+### Task 5.4: Chuẩn bị thuyết trình (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Output:** Slide deck (20 slides) + Q&A script
+**Thời hạn:** Hết tuần 5  
+**Đầu ra:** Bộ slide (20 slide) + script Q&A
 
 **Checklist:**
 
@@ -1663,18 +1663,18 @@ Week 5:
     [ ] Time allocation: intro (2 min) → method (5 min) → results (8 min) → conclusion (3 min) → Q&A (2 min)
 ```
 
-**Deliverable 5.4:**
+**Sản phẩm 5.4:**
 
-- `PRESENTATION_SLIDES.pptx` (20 slides)
-- `QA_SCRIPT.md` (30 questions + answers)
-- Presentation notes (speaker notes in slides)
+- `PRESENTATION_SLIDES.pptx` (20 slide)
+- `QA_SCRIPT.md` (30 câu hỏi + câu trả lời)
+- Ghi chú thuyết trình (speaker notes trong slide)
 
 ---
 
-### Task 5.5: Final Integration & Report (Week 5)
+### Task 5.5: Tích hợp cuối cùng & Báo cáo (Tuần 5)
 
-**Deadline:** Hết tuần 5  
-**Output:** Final integrated report + GitHub repo
+**Thời hạn:** Hết tuần 5  
+**Đầu ra:** Báo cáo tích hợp cuối cùng + kho GitHub
 
 **Checklist:**
 
@@ -1740,11 +1740,11 @@ Week 5:
     [ ] Include .gitignore (exclude large pcap files if needed)
 ````
 
-**Deliverable 5.5:**
+**Sản phẩm 5.5:**
 
 - `FINAL_INTEGRATION_REPORT.md`
-- `README.md` (project overview)
-- Complete GitHub repo (clean, organized)
+- `README.md` (tổng quan dự án)
+- Kho GitHub hoàn chỉnh (sạch, có tổ chức)
 - Tag: v1.0-final-submission
 
 ---
