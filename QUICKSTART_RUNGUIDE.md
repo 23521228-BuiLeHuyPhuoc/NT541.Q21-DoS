@@ -69,6 +69,7 @@ NT541.Q21-DDoS/
 ### TUẦN 1: Chuẩn bị (Ngày 1-5)
 
 **Step 1.1: Setup môi trường**
+
 ```bash
 # Clone repo
 git clone https://github.com/[user]/NT541.Q21-DDoS.git
@@ -83,6 +84,7 @@ mininet --version
 ```
 
 **Step 1.2: Kiểm chứng Lab (TV2)**
+
 ```bash
 # Terminal 1: Start Mininet
 sudo python3 code/topology_nhom4.py
@@ -108,6 +110,7 @@ mininet> h1 ping 10.0.2.1   # Should work
 #### **Dòng A: TV2 - Tạo dữ liệu**
 
 **Step 2A.1: Thu thập Baseline (Ngày 1-2)**
+
 ```bash
 # Terminal 1: Mininet running
 
@@ -133,12 +136,13 @@ python3 code/feature_extraction.py data/flows_baseline.pcap data/baseline_stats.
 ---
 
 **Step 2A.2: Tạo 10 DoS Attacks (Ngày 2-5)**
+
 ```bash
 # For each of 10 attacks:
 for i in {1..10}; do
     sudo tcpdump -i s2-eth0 -w data/dos_attack_$i.pcap 'tcp or udp' &
     sleep 1
-    
+
     # Trong Mininet - trigger attack (mỗi attack khác nhau)
     case $i in
         1) mininet> h_att1 hping3 -S --flood 10.0.2.1 ;;      # SYN flood
@@ -152,7 +156,7 @@ for i in {1..10}; do
         9) mininet> h_att1 h_ext1 hping3 -S --flood 10.0.2.1 ;; # Distributed
         10) mininet> nmap -p 1-65535 10.0.2.1 ; hping3 -S --flood 10.0.2.1 ;; # Port scan
     esac
-    
+
     sleep 30  # Attack duration
     sudo pkill tcpdump
     sleep 2
@@ -166,6 +170,7 @@ done
 ---
 
 **Step 2A.3: Extract Features (Ngày 4-5)**
+
 ```bash
 # Parse tất cả 11 pcap (1 baseline + 10 attacks)
 python3 << 'EOF'
@@ -193,6 +198,7 @@ EOF
 #### **Dòng B: TV3 - Xây Detection**
 
 **Step 2B.1: Build Entropy Module (Ngày 1-4)**
+
 ```bash
 # Tạo file: code/detection_entropy.py
 cat > code/detection_entropy.py << 'EOF'
@@ -203,7 +209,7 @@ class EntropyDetector:
     def __init__(self):
         self.baseline_h_src = 4.5  # Normal: 4-5 bits
         self.baseline_h_dst = 3.2
-        
+
     def calculate_entropy(self, values):
         """Shannon entropy: H(X) = -Σ p(x) log2(p(x))"""
         if not values:
@@ -218,7 +224,7 @@ class EntropyDetector:
             if p > 0:
                 entropy -= p * math.log2(p)
         return entropy
-    
+
     def detect_anomaly(self, src_ips, entropy_threshold=1.5):
         """Alert nếu entropy_src < 1.5 (SYN flood pattern)"""
         h_src = self.calculate_entropy(src_ips)
@@ -231,7 +237,7 @@ if __name__ == "__main__":
     # Test data
     normal_src = ['10.0.1.1', '10.0.1.2', '10.0.1.3', '10.0.1.1', '10.0.1.2']
     syn_flood_src = ['10.0.1.10'] * 100  # Cùng nguồn
-    
+
     print("Normal:", detector.detect_anomaly(normal_src))
     print("SYN Flood:", detector.detect_anomaly(syn_flood_src))
 EOF
@@ -244,22 +250,23 @@ python3 code/detection_entropy.py
 ---
 
 **Step 2B.2: Build Stats Module (Ngày 2-4)**
+
 ```bash
 cat > code/detection_stats.py << 'EOF'
 class StatisticalDetector:
     def __init__(self):
         self.baseline_pps = 1000  # packets/sec
         self.baseline_std = 100
-        
+
     def z_score_anomaly(self, current_pps, threshold=3):
         """Z-score > 3 → anomaly"""
         z = (current_pps - self.baseline_pps) / self.baseline_std
         return z > threshold
-    
+
     def spike_detection(self, current_pps, spike_factor=5):
         """Alert nếu pps > 5x baseline"""
         return current_pps > self.baseline_pps * spike_factor
-    
+
     def detect(self, current_pps):
         if self.z_score_anomaly(current_pps):
             return {"alert": True, "reason": "Z-score anomaly", "z": (current_pps - self.baseline_pps) / self.baseline_std}
@@ -283,6 +290,7 @@ python3 code/detection_stats.py
 #### **Dòng C: TV4 - Xây Mitigation**
 
 **Step 2C.1: Ryu Blocking (Ngày 1-4)**
+
 ```bash
 cat > code/l3_router_extended.py << 'EOF'
 from ryu.base import app_manager
@@ -293,29 +301,29 @@ from ryu.lib.packet import packet, ethernet, ipv4
 
 class BlockingRyu(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
-    
+
     def __init__(self, *args, **kwargs):
         super(BlockingRyu, self).__init__(*args, **kwargs)
         self.blacklist = set()
-    
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        
+
         # Install default rule: send to controller
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
         self.add_flow(datapath, 0, match, actions)
-    
+
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS, actions)]
         mod = parser.OFPFlowMod(datapath=datapath, priority=priority, match=match, instructions=inst)
         datapath.send_msg(mod)
-    
+
     def block_source_ip(self, datapath, src_ip):
         """Install DROP rule for src_ip"""
         ofproto = datapath.ofproto
@@ -334,28 +342,29 @@ EOF
 ### TUẦN 3: Integration & Testing (Ngày 1-15)
 
 #### **Step 3.1: Signature Matching (TV3)**
+
 ```bash
 cat > code/attack_signature_matching.py << 'EOF'
 class SignatureMatcher:
     def match_attack(self, entropy_src, syn_pct, pps, baseline_pps):
         """Match traffic to attack type"""
-        
+
         # SYN Flood
         if entropy_src < 1.5 and syn_pct > 50:
             return {"type": "SYN_FLOOD", "confidence": "HIGH"}
-        
+
         # UDP Flood
         if pps > baseline_pps * 5 and entropy_src > 3:  # High pps, diverse src
             return {"type": "UDP_FLOOD", "confidence": "HIGH"}
-        
+
         # IP Spoof
         if entropy_src > 6.5:
             return {"type": "IP_SPOOF", "confidence": "HIGH"}
-        
+
         # Low-rate DoS
         if entropy_src < 2 and pps < baseline_pps * 1.5:
             return {"type": "LOW_RATE", "confidence": "MEDIUM"}
-        
+
         return {"type": "UNKNOWN", "confidence": "LOW"}
 EOF
 ```
@@ -363,6 +372,7 @@ EOF
 ---
 
 #### **Step 3.2: Integration Test (TV5)**
+
 ```bash
 # Start full pipeline
 # Terminal 1: Mininet + Ryu
@@ -404,6 +414,7 @@ mininet> h_att1 hping3 -S --flood 10.0.2.1
 ```
 
 **Expected flow:**
+
 1. Attack starts
 2. Detection: entropy < 1.5
 3. Alert: `{"attack": "SYN_FLOOD", "src_ip": "10.0.1.10"}`
@@ -415,6 +426,7 @@ mininet> h_att1 hping3 -S --flood 10.0.2.1
 ---
 
 #### **Step 3.3: Visualization (TV5)**
+
 ```bash
 python3 code/visualization.py
 
@@ -431,6 +443,7 @@ python3 code/visualization.py
 ### TUẦN 4: Demo & Presentation (Ngày 1-5)
 
 #### **Step 4.1: Live Demo Rehearsal**
+
 ```bash
 # Setup (ngày 1-2)
 # Terminal 1: Mininet
@@ -455,6 +468,7 @@ bash code/demo.sh
 ---
 
 #### **Step 4.2: Presentation Slides**
+
 ```bash
 # Generate from PRESENTATION_STRUCTURE.md
 # Create PRESENTATION.pptx with 18 slides
@@ -479,6 +493,7 @@ numpy==1.24.0
 ## 📊 SANITY CHECK: Test mỗi phần riêng
 
 ### TV1 - Papers & Theory
+
 ```bash
 # Verify: LITERATURE_SURVEY.md tồn tại, >5000 từ
 wc -w docs/LITERATURE_SURVEY.md  # Should be > 5000
@@ -488,6 +503,7 @@ grep "H(X)" docs/THEORY_BACKGROUND.md  # Should find formulas
 ```
 
 ### TV2 - Data Collection
+
 ```bash
 # Verify: 11 pcap files + 11 CSV files
 ls -lh data/*.pcap      # 11 files, ~500MB
@@ -498,6 +514,7 @@ head data/flows_baseline_features.csv  # Should see: entropy, pps, syn%, etc.
 ```
 
 ### TV3 - Detection
+
 ```bash
 # Test detection modules
 python3 code/detection_entropy.py
@@ -509,6 +526,7 @@ ls -l results/alerts.json  # Should exist, >1MB
 ```
 
 ### TV4 - Mitigation
+
 ```bash
 # Test Ryu app
 ryu-manager code/l3_router_extended.py --verbose
@@ -518,6 +536,7 @@ ls -l results/mitigation_actions.json
 ```
 
 ### TV5 - Integration & Visualization
+
 ```bash
 # Test integration
 python3 code/integration_test.py
@@ -535,12 +554,12 @@ grep "FPR" results/test_results.json  # Should be <= 5%
 
 ## 🎯 TIMELINE QUICK REF
 
-| Tuần | Ngày | Đầu vào | Công việc | Đầu ra |
-|---|---|---|---|---|
-| **T1** | 1-5 | Survey 20-25 papers | Setup lab, theory | Lab chạy + Docs |
-| **T2** | 6-15 | Theory từ TV1 | 3 dòng song song: Data (10 DoS), Detection (entropy+stats), Mitigation (Ryu) | 10 pcap + Detection modules + Ryu app |
-| **T3** | 16-25 | Outputs từ T2 | Integration + Visualization + Testing | test_results.json + 8 plots + alerts |
-| **T4** | 26-28 | Results từ T3 | Live demo + Presentation | Demo chạy + Slides + Docs finalized |
+| Tuần   | Ngày  | Đầu vào             | Công việc                                                                    | Đầu ra                                |
+| ------ | ----- | ------------------- | ---------------------------------------------------------------------------- | ------------------------------------- |
+| **T1** | 1-5   | Survey 20-25 papers | Setup lab, theory                                                            | Lab chạy + Docs                       |
+| **T2** | 6-15  | Theory từ TV1       | 3 dòng song song: Data (10 DoS), Detection (entropy+stats), Mitigation (Ryu) | 10 pcap + Detection modules + Ryu app |
+| **T3** | 16-25 | Outputs từ T2       | Integration + Visualization + Testing                                        | test_results.json + 8 plots + alerts  |
+| **T4** | 26-28 | Results từ T3       | Live demo + Presentation                                                     | Demo chạy + Slides + Docs finalized   |
 
 ---
 
