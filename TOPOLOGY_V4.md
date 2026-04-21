@@ -1,4 +1,74 @@
+# 🖧 TOPOLOGY_V4.md — Topology nâng cấp cho đề tài phát hiện DoS/DDoS trên SDN
+
+> File này cung cấp **mã nguồn đầy đủ** của `topology_v4.py` — bản nâng cấp từ `topology_nhom4.py` đã có. **TV2** chịu trách nhiệm triển khai, **TV1** review, **TV5** dùng để chạy 14 kịch bản benchmark.
+
+---
+
+## 1. So sánh nhanh V3 (cũ) vs V4 (mới)
+
+| Mục | `topology_nhom4.py` (V3) | `topology_v4.py` (V4) |
+|---|---|---|
+| Số switch | 5 (s1–s5) | 5 (giữ nguyên) |
+| Số host | 8 | **12** (+2 attacker, +2 PC client) |
+| OpenFlow | Mặc định (1.0) | **OpenFlow 1.3** tường minh (bắt buộc cho Meter) |
+| Link | Link thường | **TCLink** có `bw` + `delay` |
+| Băng thông uplink s1↔s2 | Không giới hạn | **10 Mbps** (để đo bão hoà) |
+| QoS Queue | Không có | **3 queue HTB** trên `s2-eth1` (critical / normal / suspect) |
+| Port mirror | Không có | **Mirror s2-eth1 → s2-eth99** để TV2 capture pcap sạch |
+| Attacker zone | 2 host (`h_att1`, `h_ext1`) | **4 host** (thêm `h_att2`, `h_att3`) cho kịch bản DDoS đa nguồn |
+| Client zone PC | 2 host | **4 host** cho kịch bản flash crowd |
+
+---
+
+## 2. Sơ đồ logic
+
+```
+                        ┌──────── Controller Ryu (127.0.0.1:6653) ────────┐
+                        │                                                 │
+ [EXTERNAL/ATTACKER]    │        [ROUTER]         [SERVERS]               │
+ h_att1  10.0.1.10 ─┐   │                     ┌── h_web1 10.0.2.10        │
+ h_att2  10.0.1.11 ─┼── s1 ── 10Mbps/2ms ── s2 ── 100Mbps/1ms ── s3       │
+ h_att3  10.0.1.12 ─┤                        │                ├── h_dns1  │
+ h_ext1  10.0.1.20 ─┘                        │                             │
+                                             ├── 100Mbps/1ms ── s4        │
+                                             │                ├── h_db1   │
+                                             │                └── h_app1  │
+                                             │                             │
+                                             └── 50Mbps/1ms  ── s5        │
+                                                              ├── h_pc1   │
+                                                              ├── h_pc2   │
+                                                              ├── h_pc3   │
+                                                              └── h_pc4   │
+
+ Subnet:  10.0.1.0/24 (external)   10.0.2.0/24 (web/dns)
+          10.0.3.0/24 (db/app)     10.0.4.0/24 (pc client)
+ Gateway: .1 ở mỗi subnet, xử lý bởi L3 router trên s2 (Ryu app)
+```
+
+---
+
+## 3. Mã nguồn đầy đủ — `code/topology/topology_v4.py`
+
+```python
 #!/usr/bin/env python3
+"""
+topology_v4.py — Topology nâng cấp cho đề tài phát hiện DoS/DDoS trên SDN.
+
+Thay đổi so với topology_nhom4.py:
+  1. OpenFlow 1.3 tường minh (cho Meter Table của TV4)
+  2. TCLink có bw + delay để đo bão hoà băng thông
+  3. Thêm 2 attacker (h_att2, h_att3) cho kịch bản DDoS đa nguồn
+  4. Thêm 2 PC client (h_pc3, h_pc4) cho kịch bản flash crowd hợp pháp
+  5. Cấu hình QoS HTB 3 queue trên s2-eth1 (critical/normal/suspect) cho DQoS
+  6. Port mirror s2-eth1 → s2-eth99 để TV2 tcpdump pcap tập trung
+
+Chạy:
+    sudo python3 topology_v4.py
+Sau khi mininet CLI mở:
+    mininet> pingall        # kiểm tra L3 routing qua Ryu hoạt động
+    mininet> xterm h_att1   # mở shell attacker
+"""
+
 import os
 import sys
 import time
@@ -156,4 +226,37 @@ if __name__ == '__main__':
     if os.geteuid() != 0:
         sys.exit('Phải chạy với sudo (Mininet cần quyền root).')
     main()
+```
 
+---
+
+## 4. Kiểm thử nhanh sau khi chạy
+
+```bash
+sudo mn -c                                # dọn rác mininet trước đó
+sudo python3 code/topology/topology_v4.py
+
+# Trong mininet CLI:
+mininet> pingall                          # 12 host, expect 100% (cần Ryu L3 chạy)
+mininet> iperf h_pc1 h_web1               # kỳ vọng ≈ 50 Mbps (bottleneck s5↔s2)
+mininet> iperf h_att1 h_web1              # kỳ vọng ≈ 10 Mbps (bottleneck s1↔s2)
+mininet> h_att1 hping3 -S -p 80 --flood 10.0.2.10   # thử SYN flood
+```
+
+Ở shell khác, verify QoS + mirror:
+```bash
+sudo ovs-vsctl list qos                    # thấy 3 queue
+sudo tcpdump -i s2-eth99 -c 20             # thấy gói mirror
+```
+
+---
+
+## 5. Hướng mở rộng (ghi chú cho TV2)
+
+- Nếu cần **kịch bản #11 DDoS đa nguồn quy mô lớn hơn**: nhân bản thêm `h_att4, h_att5` và link vào `s1`.
+- Nếu cần **đo packet loss chính xác**: thêm `loss=1` vào `LINK_EXT` (mô phỏng 1% loss nền).
+- Nếu chạy trên máy yếu: giảm `bw` đồng loạt xuống 1/10 để tránh CPU saturate Mininet.
+
+---
+
+**Tham chiếu chéo:** Xem `PHANCONGV4.md` §15 (thay đổi bắt buộc) và §16 (mapping port → zone cho signature matcher của TV3).
