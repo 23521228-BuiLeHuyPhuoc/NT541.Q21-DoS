@@ -7,6 +7,7 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.app.wsgi import WSGIApplication, ControllerBase, route, Response
 from ryu.controller import ofp_event
 from ryu.controller.handler import set_ev_cls, MAIN_DISPATCHER, DEAD_DISPATCHER
+from ryu.lib.packet import packet, ipv4  # THÊM IMPORT: Dùng để phân tích IP gói tin
 
 from l3_router_test import SimpleRouterEntropy
 from mitigation import BlockModule, RateLimitModule, BlacklistManager
@@ -44,6 +45,44 @@ class L3RouterExtended(SimpleRouterEntropy):
                        and not l.startswith('#'))
         except FileNotFoundError:
             return set()
+
+    # =====================================================================
+    # TASK 4.2c: FIX SELF-DOS (CHỐNG NGẬP LỤT CONTROLLER)
+    # =====================================================================
+    def _install_sample_flow(self, dp, src_ip):
+        """Cài đặt flow tạm thời để chống Self-DoS (chỉ lấy mẫu 128 byte)."""
+        parser = dp.ofproto_parser
+        ofp = dp.ofproto
+        match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
+        
+        # Actions: Vừa chuyển tiếp bình thường (NORMAL), vừa gửi mẫu 128 byte lên Ryu
+        actions = [parser.OFPActionOutput(ofp.OFPP_NORMAL),
+                   parser.OFPActionOutput(ofp.OFPP_CONTROLLER, max_len=128)]
+        inst = [parser.OFPInstructionActions(ofp.OFPIT_APPLY_ACTIONS, actions)]
+        
+        # Flow có hiệu lực 5 giây (idle_timeout=5)
+        mod = parser.OFPFlowMod(datapath=dp, priority=10,
+                                match=match, instructions=inst, idle_timeout=5)
+        dp.send_msg(mod)
+
+    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
+    def _packet_in_handler(self, ev):
+        """Đón lỏng gói tin để cài Sample Flow trước khi xử lý phức tạp."""
+        msg = ev.msg
+        dp = msg.datapath
+        pkt = packet.Packet(msg.data)
+        ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
+
+        if ipv4_pkt:
+            src_ip = ipv4_pkt.src
+            # Nếu IP lạ (không có trong whitelist), cài flow chặn ngập lụt 5s
+            if src_ip not in self.WHITELIST_SRC:
+                self._install_sample_flow(dp, src_ip)
+
+        # Gọi lại hàm xử lý mặc định của SimpleRouterEntropy cũ (nếu có)
+        if hasattr(super(), '_packet_in_handler'):
+            super()._packet_in_handler(ev)
+    # =====================================================================
 
     def handle_alert(self, payload):
         src = payload['src_ip']
