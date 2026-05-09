@@ -157,6 +157,40 @@ def manual_block():
         return jsonify({"ok": False, "error": str(e)})
 
 # ==========================================
+# 5. DEBUG - XEM RAW DATA TỪ RYU
+# ==========================================
+@app.route('/api/debug')
+def debug_ryu():
+    """Truy cap http://VM_IP:8080/api/debug de xem Ryu tra ve gi."""
+    result = {}
+    for dpid in ['1', '2', '3', '4', '5']:
+        url = f"http://127.0.0.1:8081/stats/flow/{dpid}"
+        try:
+            resp = requests.get(url, timeout=2)
+            flows = resp.json().get(dpid, [])
+            # Chi lay 5 flow dau, gon nhe
+            summary = []
+            for f in flows[:5]:
+                summary.append({
+                    "match": f.get("match", {}),
+                    "packet_count": f.get("packet_count", 0),
+                    "priority": f.get("priority", 0)
+                })
+            result[f"switch_{dpid}"] = {
+                "total_flows": len(flows),
+                "sample_flows": summary
+            }
+        except Exception as e:
+            result[f"switch_{dpid}"] = {"error": str(e)}
+    
+    # Thêm thông tin entropy computation
+    entropy_val, entropy_info = _compute_entropy_from_ryu()
+    result["entropy_result"] = {"value": entropy_val, "info": entropy_info}
+    result["prev_flow_count_keys"] = len(_prev_flow_counts)
+    
+    return jsonify(result)
+
+# ==========================================
 # KHỞI CHẠY FLASK SERVER
 # ==========================================
 if __name__ == '__main__':
