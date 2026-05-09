@@ -115,3 +115,25 @@ class AlertAPI(ControllerBase):
         payload = json.loads(req.body)
         self.router.handle_alert(payload)
         return Response(content_type='application/json', body=b'{"ok":true}')
+
+    @route('entropy', '/api/entropy', methods=['GET'])
+    def get_entropy(self, req, **kw):
+        """Expose entropy real-time cho dashboard — cùng giá trị với Ryu log."""
+        import math
+        from collections import Counter
+        window = self.router.src_ip_window
+        window_size = len(window)
+        unique_ips = len(set(window))
+        entropy = 0.0
+        if window_size >= 10:
+            ip_counts = Counter(window)
+            total = window_size
+            entropy = -sum((c/total) * math.log2(c/total) for c in ip_counts.values())
+        body = json.dumps({
+            "entropy": round(entropy, 4),
+            "window_size": window_size,
+            "unique_ips": unique_ips,
+            "attack_status": self.router.attack_status,
+            "blocked_ips": list(self.router.blocked_ips)
+        })
+        return Response(content_type='application/json', body=body.encode())
