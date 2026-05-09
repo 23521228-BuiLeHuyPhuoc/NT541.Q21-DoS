@@ -37,6 +37,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.ENTROPY_HIGH = 8.0            # NGUONG CAO (NGHI NGO SPOOF)
         self.ENTROPY_LOW = 1.5             # NGUONG THAP (NGHI NGO 1 IP TAN CONG)
         self.attack_status = 0             # 0: BINH THUONG, 1: TAN CONG IP, 2: SPOOF
+        self.last_entropy = 0.0            # CACHE ENTROPY MOI NHAT CHO DASHBOARD
         
         # DANH SACH IP HOP LE (KHONG BI CHAN)
         self.WHITELIST_SRC = {
@@ -86,7 +87,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             current_pps = self.total_pps
             window_size = len(self.src_ip_window)
 
-            if window_size >= 100:
+            if window_size >= 10:
                 ip_counts = Counter(self.src_ip_window)
                 total = len(self.src_ip_window)
 
@@ -94,6 +95,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     p = count / total
                     entropy -= p * math.log2(p)
 
+                self.last_entropy = entropy
                 self.logger.info("[ENTROPY] Gia tri entropy = %.2f | Tong goi = %d | So IP duy nhat = %d", entropy, total, len(ip_counts))
 
                 if entropy < self.ENTROPY_LOW:
@@ -106,25 +108,26 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                             self.logger.warning("[BLOCK] Chan IP %s — da gui %d goi (chiem %.1f%% tong traffic)", ip, count, (count/total)*100)
                             self._block_ip(ip)
                             self._log_alert(ip, "dos_fixed_ip", "CRITICAL", "Blocked")
-                    self.src_ip_window.clear()
-                    self.src_mac_window.clear()
 
                 elif entropy > self.ENTROPY_HIGH:
                     self.attack_status = 2
                     self.logger.warning("[CANH BAO] Phat hien tan cong DoS bang IP gia mao! Entropy = %.2f (nguong > %.2f)", entropy, self.ENTROPY_HIGH)
-                    # Tim MAC gui nhieu nhat — chinh la MAC thuc cua ke tan cong
                     mac_counts = Counter(self.src_mac_window)
                     for mac, count in mac_counts.most_common():
                         if mac not in self.blocked_macs:
                             self.logger.warning("[BLOCK] Chan MAC %s — da gui %d goi spoof (chiem %.1f%% tong traffic)", mac, count, (count/total)*100)
                             self._block_mac(mac)
                             self._log_alert(mac, "dos_spoofed_ip", "CRITICAL", "Blocked")
-                    self.src_ip_window.clear()
-                    self.src_mac_window.clear()
                 else:
                     self.attack_status = 0
+
+                # LUON clear window sau moi chu ky 3s de entropy phan anh traffic HIEN TAI
+                self.src_ip_window.clear()
+                self.src_mac_window.clear()
             else:
-                pass
+                # Qua it goi (<10) trong 3s vua qua -> coi nhu idle
+                self.last_entropy = 0.0
+                self.attack_status = 0
 
            # --- GUI DU LIEU LEN INFLUXDB ---
             if self.influx_client:
