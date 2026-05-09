@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDN DDoS Detection Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .chart-container { width: 80%; margin: auto; }
+    </style>
+</head>
+<body>
+    <h2 style="text-align: center;">Real-time Entropy Dashboard</h2>
+    
+    <div class="chart-container">
+        <canvas id="entropyChart"></canvas>
+    </div>
+
+    <script>
+        /* Khoi tao bieu do Chart.js */
+        const ctx = document.getElementById('entropyChart').getContext('2d');
+        const entropyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: 'Shannon Entropy (src_ip)',
+                    data: [],
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: { unit: 'second' },
+                        title: { display: true, text: 'Thoi gian' }
+                    },
+                    y: {
+                        title: { display: true, text: 'Gia tri Entropy' },
+                        suggestedMin: 0,
+                        suggestedMax: 5
+                    }
+                },
+                animation: false /* Tat animation de bieu do cap nhat realtime muot ma hon */
+            }
+        });
+
+        /* Fetch du lieu moi moi 2 giay (Tich hop A.3) */
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                /* Cap nhat mang data moi cho bieu do */
+                entropyChart.data.datasets[0].data = data.entropy;
+                entropyChart.update();
+            } catch (error) {
+                console.error("Loi khi lay du lieu: ", error);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
