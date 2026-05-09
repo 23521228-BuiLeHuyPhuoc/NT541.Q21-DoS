@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SDN DDoS Detection Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- Không cần chartjs-adapter-date-fns nữa — dùng label-based x-axis -->
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
         .chart-container { width: 80%; margin: auto; }
+        #debugInfo { margin-top: 20px; padding: 10px; background: #f0f0f0; font-family: monospace; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -17,13 +18,15 @@
     <div class="chart-container">
         <canvas id="entropyChart"></canvas>
     </div>
+    <div id="debugInfo">Dang cho du lieu...</div>
 
     <script>
-        /* Khoi tao bieu do Chart.js */
+        /* Khoi tao bieu do Chart.js — dung labels (category) thay vi time scale */
         const ctx = document.getElementById('entropyChart').getContext('2d');
         const entropyChart = new Chart(ctx, {
             type: 'line',
             data: {
+                labels: [],
                 datasets: [{
                     label: 'Shannon Entropy (src_ip)',
                     data: [],
@@ -31,14 +34,12 @@
                     backgroundColor: 'rgba(255, 99, 132, 0.2)',
                     borderWidth: 2,
                     fill: true,
-                    tension: 0.1
+                    tension: 0.3
                 }]
             },
             options: {
                 scales: {
                     x: {
-                        type: 'time',
-                        time: { unit: 'second' },
                         title: { display: true, text: 'Thoi gian' }
                     },
                     y: {
@@ -51,16 +52,24 @@
             }
         });
 
-        /* Fetch du lieu moi moi 2 giay (Tich hop A.3) */
+        /* Fetch du lieu moi moi 2 giay */
         setInterval(async () => {
             try {
                 const response = await fetch('/api/stats');
                 const data = await response.json();
                 
-                /* Cap nhat mang data moi cho bieu do */
-                entropyChart.data.datasets[0].data = data.entropy;
+                /* Cap nhat labels (thoi gian) va values (entropy) */
+                entropyChart.data.labels = data.labels;
+                entropyChart.data.datasets[0].data = data.values;
                 entropyChart.update();
+
+                /* Hien thi debug info */
+                const latest = data.values.length > 0 ? data.values[data.values.length - 1] : 'N/A';
+                document.getElementById('debugInfo').textContent = 
+                    'Entropy hien tai: ' + latest + ' | So diem du lieu: ' + data.values.length +
+                    ' | JSON exists: ' + data.debug_json_exists + ' | Raw: ' + JSON.stringify(data.debug_raw);
             } catch (error) {
+                document.getElementById('debugInfo').textContent = 'LOI: ' + error.message;
                 console.error("Loi khi lay du lieu: ", error);
             }
         }, 2000);

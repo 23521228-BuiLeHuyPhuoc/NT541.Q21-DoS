@@ -17,26 +17,38 @@ def home():
 @app.route('/api/stats')
 def stats(): 
     global entropy_history
-    # Mặc định là 3.4 (Safe level) để tránh biểu đồ nhảy xuống 0 khi lỗi đọc file
     current_entropy = 3.4 
+    debug_raw = {}
+    json_exists = False
     
     try:
-        # Kiểm tra file tồn tại và có dữ liệu không
-        if os.path.exists(JSON_PATH) and os.path.getsize(JSON_PATH) > 0:
+        json_exists = os.path.exists(JSON_PATH)
+        if json_exists and os.path.getsize(JSON_PATH) > 0:
             with open(JSON_PATH, "r") as f:
                 features = json.load(f)
+                debug_raw = features
                 current_entropy = features.get("entropy_src_ip", 3.4)
     except Exception as e:
+        debug_raw = {"error": str(e)}
         print(f"[DASHBOARD ERR] {e}")
 
-    now_ms = int(time.time() * 1000)
-    entropy_history.append({"x": now_ms, "y": current_entropy})
+    now_str = datetime.now().strftime('%H:%M:%S')
+    entropy_history.append({"label": now_str, "value": current_entropy})
     
     # Giữ lại 30 điểm gần nhất cho mượt
     if len(entropy_history) > 30: 
         entropy_history.pop(0)
+    
+    labels = [p["label"] for p in entropy_history]
+    values = [p["value"] for p in entropy_history]
         
-    return jsonify({"entropy": entropy_history})
+    return jsonify({
+        "labels": labels, 
+        "values": values,
+        "debug_json_exists": json_exists,
+        "debug_json_path": JSON_PATH,
+        "debug_raw": debug_raw
+    })
 
 # ==========================================
 # 2. TRANG ALERTS (Danh sách cảnh báo)
