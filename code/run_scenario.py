@@ -73,6 +73,14 @@ def run(scenario_id):
     
     try:
         t0 = time.time()
+        
+        # --- DOAN CODE MOI DUOC THEM VAO ---
+        print("[*] Chay pingall de hoc ARP...")
+        mn.stdin.write(b"pingall\n")
+        mn.stdin.flush()
+        time.sleep(5)
+        # ----------------------------------
+
         print(f"[*] Tien hanh kich hoat ma doc tan cong (h_att1)...")
         mn.stdin.write(f"h_att1 bash code/attack_scripts/{scenario_id}.sh &\n".encode())
         mn.stdin.flush()
