@@ -10,7 +10,7 @@ def stack():
     time.sleep(3)
     
     # 2. Goi file topology cu hien co trong thu muc
-    mn = subprocess.Popen(["sudo", "python3", "code/topology/topology_nhom4.py"],
+    mn = subprocess.Popen(["sudo", "python3", "code/topology/topology_v4.py"],
                           stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     time.sleep(8)
     

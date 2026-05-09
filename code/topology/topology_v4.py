@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-topology_nhom4.py — TV2 (Phúc) — Task 2.1 & 2.2
+topology_v4.py — TV2 (Phúc) — Task 2.1 & 2.2
 Topology V4: 12 hosts, 5 switches, OF1.3, QoS+Mirror ON.
 Dùng để mô phỏng mạng và thu thập dữ liệu tấn công DoS.
 """
