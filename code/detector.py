@@ -6,7 +6,8 @@ from stats import StatsDetector
 from signature_matcher import SignatureMatcher
 
 RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
-JSON_PATH = "results/raw/current_features.json"
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.json")
 
 last_total_packets = 0
 last_check_time = time.time()
@@ -88,7 +89,7 @@ def extract_features(flows):
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
-        print(f"[{timestamp}] Mạng trống -> Entropy = 0.0")
+        print(f"[{timestamp}] Mạng trống -> Entropy giữ baseline = {entropy_src_ip}")
     else:
         print(f"[{timestamp}] Mạng có {len(src_ip_counts)} IPs | Gói tin (giây này): {total_src_pkts_delta} | Entropy: {round(entropy_src_ip, 2)}")
 

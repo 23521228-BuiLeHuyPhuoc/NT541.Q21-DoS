@@ -4,7 +4,8 @@ from datetime import datetime
 
 app = Flask(__name__)
 entropy_history =[]
-JSON_PATH = "results/raw/current_features.json"
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.json")
 
 # ==========================================
 # 1. TRANG CHÍNH - BIỂU ĐỒ ENTROPY
