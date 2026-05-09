@@ -23,10 +23,38 @@ class BlockModule:
 
 # --- GIỮ NGUYÊN PLACEHOLDER CHO CÁC TASK SAU ---
 class RateLimitModule:
+    """Meter Table OF1.3 — yêu cầu protocols='OpenFlow13'."""
     def __init__(self, app):
         self.app = app
+        self.meter_ids = {}
+
     def apply(self, dp, src_ip, pps=1000):
-        self.app.logger.warning(f"[DUMMY RATELIMIT] {src_ip} -> {pps} pps")
+        parser = dp.ofproto_parser
+        ofp = dp.ofproto
+        
+        # Băm IP ra một số ID duy nhất từ 1 đến 65535
+        mid = abs(hash(src_ip)) & 0xffff
+        self.meter_ids[src_ip] = mid
+        
+        # 1. Tạo một cái "Đồng hồ nước" (Meter) bóp tốc độ xuống mức pps
+        band = parser.OFPMeterBandDrop(rate=pps, burst_size=pps//10)
+        mmod = parser.OFPMeterMod(dp, command=ofp.OFPMC_ADD,
+                                  flags=ofp.OFPMF_PKTPS,
+                                  meter_id=mid, bands=[band])
+        dp.send_msg(mmod)
+        
+        # 2. Tạo một luồng (Flow) điều hướng traffic của IP này chui qua cái Meter đó
+        match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
+        inst = [parser.OFPInstructionMeter(meter_id=mid),
+                parser.OFPInstructionActions(
+                    ofp.OFPIT_APPLY_ACTIONS,
+                    [parser.OFPActionOutput(ofp.OFPP_NORMAL)])]
+                    
+        fmod = parser.OFPFlowMod(datapath=dp, priority=80,
+                                 match=match, instructions=inst,
+                                 hard_timeout=120)
+        dp.send_msg(fmod)
+        self.app.logger.warning(f"[RATELIMIT] {src_ip} -> {pps} pps (meter={mid})")
 
 class BlacklistManager:
     def __init__(self, app):
