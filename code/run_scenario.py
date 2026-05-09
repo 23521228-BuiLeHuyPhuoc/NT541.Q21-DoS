@@ -5,7 +5,7 @@ import sys
 import os
 import requests
 
-RYU_REST = "http://localhost:8080/stats/flow/2"
+RYU_REST = "http://localhost:8081/stats/flow/2"
 ALERT_LOG = "results/raw/alerts.json"
 DETECTOR_LOG = "results/raw/detector.log"
 RYU_LOG = "results/raw/ryu.log"
@@ -23,7 +23,7 @@ def start_topology():
 def start_ryu():
     print(f"[*] Dang khoi dong Ryu (log: {RYU_LOG})...")
     ryu_out = open(RYU_LOG, 'w')
-    p = subprocess.Popen(["ryu-manager", "--wsapi-port", "8081", "code/l3_router_extended.py"],
+    p = subprocess.Popen(["ryu-manager", "--wsapi-port", "8081", "ryu.app.ofctl_rest", "code/l3_router_extended.py"],
                          stdout=ryu_out, stderr=subprocess.STDOUT)
     time.sleep(3)
     return p, ryu_out
@@ -31,7 +31,7 @@ def start_ryu():
 def start_detector():
     print(f"[*] Dang khoi dong Detector (log: {DETECTOR_LOG})...")
     det_out = open(DETECTOR_LOG, 'w')
-    p = subprocess.Popen(["python3", "code/detector.py"], stdout=det_out, stderr=subprocess.STDOUT)
+    p = subprocess.Popen(["python3", "-u", "code/detector.py"], stdout=det_out, stderr=subprocess.STDOUT)
     return p, det_out
 
 def wait_for_alert(t0, timeout=15):

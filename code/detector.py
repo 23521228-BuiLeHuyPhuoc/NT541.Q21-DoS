@@ -4,7 +4,7 @@ from entropy import EntropyDetector
 from stats import StatsDetector
 from signature_matcher import SignatureMatcher
 
-RYU_FLOW_URL = "http://127.0.0.1:8080/stats/flow/2"
+RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
 
 def extract_features(flows):
     """
