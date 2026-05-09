@@ -19,8 +19,8 @@ def extract_features(flows):
         "suspect_src_ip": "10.0.1.10"
     }
     
-    # KHI BỊ TẤN CÔNG (Traffic bùng nổ > 100 gói) -> Kích hoạt đặc điểm SYN Flood
-    if total_packets > 100:
+    # KHI BỊ TẤN CÔNG (Traffic bùng nổ > 3000 gói) -> Kích hoạt đặc điểm SYN Flood
+    if total_packets > 3000:
         features["pps"] = 6000
         features["entropy_src"] = 1.0       # < 1.5 -> Bắt Rule
         features["entropy_src_ip"] = 1.0    # < 1.5 -> Bắt Rule
