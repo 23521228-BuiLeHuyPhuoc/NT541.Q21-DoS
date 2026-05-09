@@ -84,12 +84,14 @@ def flows():
     return render_template('flows.html', flows=flows_data, dpid=dpid)
 
 # --- PHAN E: Manual Block ---
-@app.route('/api/block', methods=['POST'])
+@app.route("/api/block", methods=["POST"])
 def manual_block():
     try:
-        ip = request.json['src_ip']
-        requests.post('http://127.0.0.1:8081/api/alert', 
-                      json={"src_ip": ip, "severity": "critical_repeat"})
+        ip = request.json["src_ip"]
+        # Gửi 3 Alert liên tiếp để ép Graduated Response nhảy thẳng lên Cấp 3 (Block)
+        for _ in range(3):
+            requests.post("http://127.0.0.1:8081/api/alert", 
+                          json={"src_ip": ip, "severity": "critical_repeat"})
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})

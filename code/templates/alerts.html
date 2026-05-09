@@ -10,12 +10,24 @@
         th { background-color: #f4f4f4; }
         .CRITICAL { color: red; font-weight: bold; }
         .WARN { color: orange; font-weight: bold; }
+        .block-box { margin-top: 20px; padding: 15px; border: 2px solid #dc3545; border-radius: 5px; background: #fff8f8; display: inline-block; }
+        .block-box input { padding: 5px; }
+        .block-box button { background: #dc3545; color: white; border: none; padding: 6px 15px; cursor: pointer; border-radius: 3px; }
+        .block-box button:hover { background: #c82333; }
     </style>
 </head>
 <body>
     <h2>Danh sách Cảnh báo (Alerts)</h2>
     <a href="/">← Quay lại Biểu đồ (Home)</a> | <a href="/flows">Xem Flows →</a>
     
+    <!-- PHẦN E: FORM MANUAL BLOCK -->
+    <div class="block-box">
+        <h3>🚨 Chặn IP thủ công (Manual Block)</h3>
+        <input type="text" id="blockIpInput" placeholder="Nhập IP (VD: 10.0.1.10)">
+        <button onclick="manualBlock()">Chặn ngay lập tức</button>
+        <p id="blockResult" style="color: #dc3545; font-weight: bold; margin-bottom: 0;"></p>
+    </div>
+
     <table>
         <tr>
             <th>Time</th>
@@ -38,5 +50,24 @@
         </tr>
         {% endfor %}
     </table>
+
+    <script>
+        function manualBlock() {
+            const ip = document.getElementById('blockIpInput').value;
+            if(!ip) return alert("Vui lòng nhập IP!");
+            
+            fetch('/api/block', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({src_ip: ip})
+            }).then(res => res.json()).then(data => {
+                if(data.ok) {
+                    document.getElementById('blockResult').innerText = "✅ Đã ép Controller chặn IP: " + ip;
+                } else {
+                    alert("Lỗi: " + data.error);
+                }
+            }).catch(err => alert("Lỗi kết nối Backend!"));
+        }
+    </script>
 </body>
 </html>
