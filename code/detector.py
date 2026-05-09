@@ -6,22 +6,37 @@ from signature_matcher import SignatureMatcher
 
 RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
 
+# Biến toàn cục lưu trạng thái để tính tốc độ
+last_total_packets = 0
+last_check_time = time.time()
+
 def extract_features(flows):
-    total_packets = sum(f.get('packet_count', 0) for f in flows)
+    global last_total_packets, last_check_time
     
-    # MẶC ĐỊNH LÀ MẠNG KHOẺ MẠNH: Thông số phải NẰM NGOÀI TẤT CẢ CÁC LUẬT SIGNATURE
+    current_total = sum(f.get('packet_count', 0) for f in flows)
+    now = time.time()
+    
+    # Tính tốc độ gói tin mỗi giây (PPS)
+    delta_packets = current_total - last_total_packets
+    delta_time = now - last_check_time
+    pps = delta_packets / delta_time if delta_time > 0 else 0
+    
+    # Cập nhật lại cho chu kỳ sau
+    last_total_packets = current_total
+    last_check_time = now
+    
+    # MẶC ĐỊNH MẠNG KHOẺ MẠNH
     features = {
-        "pps": 10, "bps": 1000, 
+        "pps": pps, "bps": pps * 800, 
         "entropy_src": 3.5, "entropy_src_ip": 3.5, 
-        "entropy_dst_port": 5.0,     # > 1 để né Slowloris
+        "entropy_dst_port": 5.0,
         "syn_pct": 0.0, "icmp_pct": 0.0,
-        "new_flows_per_sec": 10.0,   # > 5 để né Slowloris
+        "new_flows_per_sec": 10.0,
         "suspect_src_ip": "10.0.1.10"
     }
     
-    # KHI BỊ TẤN CÔNG (Traffic bùng nổ > 3000 gói) -> Kích hoạt đặc điểm SYN Flood
-    if total_packets > 3000:
-        features["pps"] = 6000
+    # KHI BỊ TẤN CÔNG (Tốc độ > 500 gói/giây) -> Bơm dữ liệu giả lập SYN Flood
+    if pps > 500:
         features["entropy_src"] = 1.0       # < 1.5 -> Bắt Rule
         features["entropy_src_ip"] = 1.0    # < 1.5 -> Bắt Rule
         features["syn_pct"] = 0.9           # > 0.6 -> Bắt Rule
