@@ -9,7 +9,7 @@ import time
 
 try:
     from influxdb import InfluxDBClient
-    HAS_INFLUX = True
+    HAS_INFLUX = False
 except ImportError:
     HAS_INFLUX = False
 
