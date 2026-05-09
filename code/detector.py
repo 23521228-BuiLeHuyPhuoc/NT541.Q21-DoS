@@ -12,20 +12,22 @@ last_total_packets = 0
 last_check_time = time.time()
 first_run = True
 
+# Thêm biến Global này ở đầu file detector.py (dưới dòng first_run = True)
+last_flow_counts = {}
+
 def extract_features(flows):
-    global last_total_packets, last_check_time, first_run
-    current_total = sum(f.get('packet_count', 0) for f in flows)
+    global last_total_packets, last_check_time, first_run, last_flow_counts
     now = time.time()
     
+    current_total = sum(f.get('packet_count', 0) for f in flows)
     if first_run:
         last_total_packets = current_total
         last_check_time = now
         first_run = False
         pps = 0.0
     else:
-        delta_packets = current_total - last_total_packets
         delta_time = now - last_check_time
-        pps = delta_packets / delta_time if delta_time > 0 else 0
+        pps = (current_total - last_total_packets) / delta_time if delta_time > 0 else 0
         last_total_packets = current_total
         last_check_time = now
 
@@ -34,46 +36,68 @@ def extract_features(flows):
     icmp_packets = 0
     syn_packets = 0
     
+    current_flow_counts = {}
+    
     for flow in flows:
         match = flow.get('match', {})
         pkt_count = flow.get('packet_count', 0)
         
-        # Tương thích cả 2 chuẩn API của Ryu
+        # Tạo định danh (ID) duy nhất cho mỗi luồng
+        match_str = str(match)
+        current_flow_counts[match_str] = pkt_count
+        
+        # TÍNH DELTA (Chênh lệch gói tin trong 1 giây qua của từng luồng)
+        last_count = last_flow_counts.get(match_str, 0)
+        # Nếu flow mới bị reset (số packet < số cũ), lấy luôn số packet hiện tại
+        delta_pkt = pkt_count - last_count if pkt_count >= last_count else pkt_count
+        
+        if delta_pkt == 0:
+            continue # Bỏ qua flow không có traffic mới
+
         src_ip = match.get('ipv4_src') or match.get('nw_src')
         if src_ip:
-            src_ip_counts[src_ip] += pkt_count
+            src_ip_counts[src_ip] += delta_pkt
             
         dst_port = match.get('tcp_dst') or match.get('tp_dst') or match.get('udp_dst')
         if dst_port:
-            dst_port_counts[dst_port] += pkt_count
+            dst_port_counts[dst_port] += delta_pkt
             
         ip_proto = match.get('ip_proto') or match.get('nw_proto')
         if ip_proto == 1:
-            icmp_packets += pkt_count
+            icmp_packets += delta_pkt
             
         if match.get('tcp_flags') == 2:
-            syn_packets += pkt_count
+            syn_packets += delta_pkt
 
-    total_src_pkts = sum(src_ip_counts.values())
+    # Cập nhật bộ nhớ để dùng cho chu kỳ giây tiếp theo
+    last_flow_counts = current_flow_counts
+
+    # 1. Tính Shannon Entropy cho Source IP
+    total_src_pkts_delta = sum(src_ip_counts.values())
     entropy_src_ip = 0.0
-    if total_src_pkts > 0:
-        entropy_src_ip = -sum((c/total_src_pkts) * math.log2(c/total_src_pkts) for c in src_ip_counts.values())
+    if total_src_pkts_delta > 0:
+        entropy_src_ip = -sum((c/total_src_pkts_delta) * math.log2(c/total_src_pkts_delta) for c in src_ip_counts.values())
 
-    # --- IN RA TERMINAL GIẢI THÍCH LÝ DO CHO BẠN HIỂU ---
+    # 2. Tính Shannon Entropy cho Destination Port (Dành cho s04_http_flood)
+    total_dst_pkts_delta = sum(dst_port_counts.values())
+    entropy_dst_port = 0.0
+    if total_dst_pkts_delta > 0:
+        entropy_dst_port = -sum((c/total_dst_pkts_delta) * math.log2(c/total_dst_pkts_delta) for c in dst_port_counts.values())
+
     timestamp = time.strftime('%H:%M:%S')
-    if total_src_pkts == 0:
-        print(f"[{timestamp}] Mạng ĐANG TRỐNG (Flow đã bị xóa/Chưa có traffic) -> Entropy = 0.0")
-    elif len(src_ip_counts) == 1:
-        ip = list(src_ip_counts.keys())[0]
-        print(f"[{timestamp}] Traffic chỉ từ 1 IP duy nhất ({ip}) -> Entropy = 0.0 (Dấu hiệu bị DDoS)")
+    if total_src_pkts_delta == 0:
+        print(f"[{timestamp}] Mạng trống -> Entropy = 0.0")
     else:
-        print(f"[{timestamp}] Mạng BÌNH THƯỜNG: Có {len(src_ip_counts)} IPs đang gửi | Tổng gói: {total_src_pkts} | Entropy = {round(entropy_src_ip, 2)}")
+        print(f"[{timestamp}] Mạng có {len(src_ip_counts)} IPs | Gói tin (giây này): {total_src_pkts_delta} | Entropy: {round(entropy_src_ip, 2)}")
 
     features = {
-        "pps": pps, "bps": pps * 800, 
-        "entropy_src_ip": round(entropy_src_ip, 3), 
-        "syn_pct": round(syn_packets / total_src_pkts, 3) if total_src_pkts > 0 else 0.0, 
-        "icmp_pct": round(icmp_packets / total_src_pkts, 3) if total_src_pkts > 0 else 0.0,
+        "pps": pps, 
+        "bps": pps * 800, 
+        "entropy_src": round(entropy_src_ip, 3),        # Fix tên biến khớp với attack_signatures.csv
+        "entropy_src_ip": round(entropy_src_ip, 3),     # Giữ lại để không bị lỗi tương thích
+        "entropy_dst_port": round(entropy_dst_port, 3), # Fix thiếu feature port
+        "syn_pct": round(syn_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0, 
+        "icmp_pct": round(icmp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
         "suspect_src_ip": src_ip_counts.most_common(1)[0][0] if src_ip_counts else "10.0.1.10"
     }
     return features
