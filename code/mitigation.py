@@ -57,7 +57,25 @@ class RateLimitModule:
         self.app.logger.warning(f"[RATELIMIT] {src_ip} -> {pps} pps (meter={mid})")
 
 class BlacklistManager:
+    """{src_ip: expire_ts} voi auto-release."""
     def __init__(self, app):
         self.app = app
+        self.entries = {}
+        self._stop = False
+        threading.Thread(target=self._gc_loop, daemon=True).start()
+
     def add(self, src_ip, ttl=60):
-        pass
+        self.entries[src_ip] = time.time() + ttl
+
+    def is_blocked(self, src_ip):
+        exp = self.entries.get(src_ip)
+        return exp is not None and exp > time.time()
+
+    def _gc_loop(self):
+        while not self._stop:
+            now = time.time()
+            expired = [ip for ip, exp in self.entries.items() if exp <= now]
+            for ip in expired:
+                del self.entries[ip]
+                self.app.logger.info(f"[blacklist] auto-release {ip}")
+            time.sleep(5)
