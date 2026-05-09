@@ -1,42 +1,43 @@
-"""
-Module Entropy - Tách từ l3_router_test.py phục vụ pipeline 4 tầng.
-Cơ sở khoa học: Lakhina (2005) [2] và Mousavi (2014).[3]
-"""
-import math
-from collections import Counter
+"""Shannon + Renyi entropy detector. Cite: A1 Kumar 2018, B4 Bhuyan 2015."""
+import math, json
+from collections import Counter, deque
 
-def _compute_entropy(items):
-    """
-    Tính toán Shannon Entropy.
-    Công thức: $H(X) = -\sum p(x_i) \log_2 p(x_i)$
-    """
-    if not items:
-        return 0.0
-    counts = Counter(items)
-    total = len(items)
-    entropy = 0.0
-    for count in counts.values():
-        p = count / total
-        entropy -= p * math.log2(p)
-    return entropy
+def shannon(items):
+    c = Counter(items); n = sum(c.values())
+    return -sum((v/n)*math.log2(v/n) for v in c.values()) if n else 0
 
-def _window_buffer(data_list, new_item, max_size=1000):
-    """
-    Duy trì cửa sổ trượt cho danh sách IP/Port.
-    Dựa trên thiết kế WINDOW_SIZE của router cũ.
-    """
-    data_list.append(new_item)
-    if len(data_list) > max_size:
-        data_list.pop(0)
-    return data_list
+def renyi(items, q=2):
+    c = Counter(items); n = sum(c.values())
+    if n == 0: return 0
+    s = sum((v/n)**q for v in c.values())
+    return (1/(1-q)) * math.log2(s) if s > 0 else 0
 
-def _monitor_entropy(current_entropy, low_threshold=1.5, high_threshold=8.0):
-    """
-    Phân loại trạng thái tấn công dựa trên ngưỡng.
-    Ngưỡng 1.5 được Mousavi (2014) xác định là tối ưu cho SDN.[4, 3]
-    """
-    if current_entropy < low_threshold:
-        return 1  # DoS IP cố định
-    elif current_entropy > high_threshold:
-        return 2  # DoS Spoofing
-    return 0  # Bình thường
+class EntropyDetector:
+    def __init__(self, baseline_path='datasets/baseline_stats.json',
+                 k_sigma=3, adaptive_window_sec=300):
+        b = json.load(open(baseline_path))
+        self.mu = {k: v["mean"] for k,v in b.items()}
+        self.sigma = {k: v["std"] for k,v in b.items()}
+        self.k = k_sigma
+        self.recent = deque(maxlen=adaptive_window_sec)
+
+    def check(self, features):
+        alerts = []
+        for key in ('entropy_src_ip', 'entropy_dst_port', 'entropy_renyi_src'):
+            v = features.get(key, 0)
+            mu, sig = self.mu.get(key, 0), self.sigma.get(key, 1)
+            if abs(v - mu) > self.k * sig:
+                alerts.append({"source": "entropy", "feature": key,
+                               "value": v, "deviation": (v-mu)/sig})
+        self.recent.append(features)
+        return {"anomaly": len(alerts) > 0, "alerts": alerts}
+
+    def update_baseline(self):
+        """Gọi mỗi 5' nếu KHÔNG có alert — adaptive baseline."""
+        if len(self.recent) < 60: return
+        import statistics
+        for key in self.mu:
+            vals = [f[key] for f in self.recent if key in f]
+            if len(vals) > 10:
+                self.mu[key] = statistics.mean(vals)
+                self.sigma[key] = max(statistics.stdev(vals), 1e-6)
