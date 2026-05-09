@@ -3,7 +3,7 @@ import csv
 import os
 
 # --- CẤU HÌNH INFLUXDB ---
-INFLUX_TOKEN = "my-super-secret-auth-token" 
+INFLUX_TOKEN = "2Bdyw5xOnRrLQK-s7NFS0IxylcXDSt86UhpqFr-H4moUw4nxR-QxmsD5LkNQHMcC66hk7A9X-NUvk7iNk4MNvQ==" 
 INFLUX_URL = "http://localhost:8086"
 ORG = "sdn"
 BUCKET = "sdn"
