@@ -3,6 +3,7 @@ import time
 import json
 import sys
 import os
+import signal
 import requests
 
 RYU_REST = "http://localhost:8081/stats/flow/2"
@@ -16,7 +17,8 @@ def start_topology():
     
     print("[*] Dang khoi dong Topology V4...")
     p = subprocess.Popen(["sudo", "python3", "code/topology/topology_v4.py"],
-                         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
     time.sleep(8)
     return p
 
@@ -24,14 +26,16 @@ def start_ryu():
     print(f"[*] Dang khoi dong Ryu (log: {RYU_LOG})...")
     ryu_out = open(RYU_LOG, 'w')
     p = subprocess.Popen(["ryu-manager", "--wsapi-port", "8081", "ryu.app.ofctl_rest", "code/l3_router_extended.py"],
-                         stdout=ryu_out, stderr=subprocess.STDOUT)
+                         stdout=ryu_out, stderr=subprocess.STDOUT,
+                         start_new_session=True)
     time.sleep(3)
     return p, ryu_out
 
 def start_detector():
     print(f"[*] Dang khoi dong Detector (log: {DETECTOR_LOG})...")
     det_out = open(DETECTOR_LOG, 'w')
-    p = subprocess.Popen(["python3", "-u", "code/detector.py"], stdout=det_out, stderr=subprocess.STDOUT)
+    p = subprocess.Popen(["python3", "-u", "code/detector.py"], stdout=det_out, stderr=subprocess.STDOUT,
+                         start_new_session=True)
     return p, det_out
 
 def wait_for_alert(t0, timeout=15):
@@ -118,8 +122,15 @@ def run(scenario_id):
         return result
     finally:
         print("[*] Dang don dep va tat cac tien trinh...")
-        det.terminate()
-        ryu.terminate()
+        # Dùng os.killpg vì mỗi subprocess chạy trong session riêng
+        try:
+            os.killpg(os.getpgid(det.pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            det.terminate()
+        try:
+            os.killpg(os.getpgid(ryu.pid), signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            ryu.terminate()
         det_out.close()
         ryu_out.close()
         try: 
