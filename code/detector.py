@@ -74,15 +74,17 @@ def extract_features(flows):
 
     # 1. Tính Shannon Entropy cho Source IP
     total_src_pkts_delta = sum(src_ip_counts.values())
-    entropy_src_ip = 0.0
     if total_src_pkts_delta > 0:
         entropy_src_ip = -sum((c/total_src_pkts_delta) * math.log2(c/total_src_pkts_delta) for c in src_ip_counts.values())
+    else:
+        entropy_src_ip = 3.4  # Giữ baseline khi mạng idle (không có gói tin mới)
 
     # 2. Tính Shannon Entropy cho Destination Port (Dành cho s04_http_flood)
     total_dst_pkts_delta = sum(dst_port_counts.values())
-    entropy_dst_port = 0.0
     if total_dst_pkts_delta > 0:
         entropy_dst_port = -sum((c/total_dst_pkts_delta) * math.log2(c/total_dst_pkts_delta) for c in dst_port_counts.values())
+    else:
+        entropy_dst_port = 3.4  # Giữ baseline khi mạng idle
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
