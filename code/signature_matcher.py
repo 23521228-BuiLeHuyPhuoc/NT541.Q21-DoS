@@ -3,7 +3,6 @@ import csv
 import ast
 import operator
 
-# Chỉ cho phép các phép toán so sánh và logic cơ bản
 ALLOWED_OPS = {
     ast.Lt: operator.lt, ast.Gt: operator.gt,
     ast.LtE: operator.le, ast.GtE: operator.ge,
@@ -12,7 +11,18 @@ ALLOWED_OPS = {
 }
 
 def safe_eval(rule_str, ctx):
-    tree = ast.parse(rule_str, mode='eval')
+    if not rule_str or rule_str.strip() == "":
+        return False
+        
+    # Tự động sửa lỗi cú pháp: đổi ' AND ' thành ' and ', ' OR ' thành ' or '
+    clean_rule = rule_str.replace(' AND ', ' and ').replace(' OR ', ' or ')
+    clean_rule = clean_rule.replace('&&', ' and ').replace('||', ' or ')
+    
+    try:
+        tree = ast.parse(clean_rule.strip(), mode='eval')
+    except SyntaxError:
+        raise ValueError(f"Sai cú pháp Python: {clean_rule}")
+
     def _ev(n):
         if isinstance(n, ast.Expression): return _ev(n.body)
         if isinstance(n, ast.BoolOp):
@@ -24,7 +34,7 @@ def safe_eval(rule_str, ctx):
             return ALLOWED_OPS[type(n.ops[0])](left, right)
         if isinstance(n, ast.Name): return ctx.get(n.id, 0)
         if isinstance(n, ast.Constant): return n.value
-        if isinstance(n, ast.Num): return n.n  # Hỗ trợ Python bản cũ
+        if isinstance(n, ast.Num): return n.n
         raise ValueError(f"Disallowed: {ast.dump(n)}")
     return _ev(tree)
 
@@ -33,21 +43,20 @@ class SignatureMatcher:
         self.rules = []
         with open(csv_path) as f:
             for row in csv.DictReader(f):
-                # Bỏ qua flashcrowd (vì đây là traffic hợp lệ, không phải tấn công)
-                if row['name'] == 's08_flashcrowd': continue
+                if row.get('name') == 's08_flashcrowd': continue
                 self.rules.append(row)
 
     def match(self, features):
         hits = []
         for r in self.rules:
             try:
-                # Đưa data vào cây AST để đánh giá
-                if safe_eval(r['rule'], features):
+                rule_text = r.get('rule', '')
+                if safe_eval(rule_text, features):
                     hits.append({
-                        "attack": r['name'], 
-                        "rule": r['rule'],
+                        "attack": r.get('name', 'unknown'), 
+                        "rule": rule_text,
                         "papers": r.get('papers','')
                     })
             except Exception as e:
-                print(f"[sig] eval error {r['name']}: {e}")
+                print(f"[sig] eval error {r.get('name')}: {e}")
         return hits
