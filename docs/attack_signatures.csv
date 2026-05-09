@@ -5,5 +5,5 @@ s03_icmp_flood,ICMP Flood,"icmp_pct>0.5 AND pps>3000","0.5;3000","icmp_pct;pps",
 s04_http_flood,HTTP Flood,"entropy_dst_port<2 AND syn_pct>0.4","2;0.4","entropy_dst_port;syn_pct","B4"
 s05_dns_ampl,DNS Amplification,"avg_pkt_size>500 AND entropy_src_ip>3","500;3","avg_pkt_size;entropy_src","C2"
 s06_spoof,IP Spoof,"entropy_src_ip>4.5 AND pps>3000","4.5;3000","entropy_src;pps","B3"
-s07_slowloris,Slowloris,"new_flows_per_sec<5 AND entropy_dst_port<1","5;1","new_flows;entropy_dst_port","B5"
+s07_slowloris,Slowloris,"pps>10 and new_flows_per_sec<5 and entropy_dst_port<1","5;1","new_flows;entropy_dst_port","B5"
 s08_flashcrowd,Flash Crowd,"entropy_src_ip>4 AND pps>mu","4;-","entropy_src;pps","-"
