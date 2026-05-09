@@ -4,11 +4,14 @@ from entropy import EntropyDetector
 from stats import StatsDetector
 from signature_matcher import SignatureMatcher
 
+import math
+from collections import Counter
 RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
 
 last_total_packets = 0
 last_check_time = time.time()
 first_run = True
+
 
 def extract_features(flows):
     global last_total_packets, last_check_time, first_run
@@ -20,32 +23,64 @@ def extract_features(flows):
         last_total_packets = current_total
         last_check_time = now
         first_run = False
-        pps = 11.4  # Tốc độ an toàn theo baseline
+        pps = 11.4 
     else:
         delta_packets = current_total - last_total_packets
         delta_time = now - last_check_time
         pps = delta_packets / delta_time if delta_time > 0 else 0
         last_total_packets = current_total
         last_check_time = now
+
+    # Khởi tạo các bộ đếm
+    src_ip_counts = Counter()
+    dst_port_counts = Counter()
+    icmp_packets = 0
+
+    # Trích xuất dữ liệu từ các luồng
+    for flow in flows:
+        match = flow.get('match', {})
+        pkt_count = flow.get('packet_count', 0)
+        
+        if 'ipv4_src' in match:
+            src_ip_counts[match['ipv4_src']] += pkt_count
+            
+        if 'tcp_dst' in match or 'udp_dst' in match:
+            port = match.get('tcp_dst') or match.get('udp_dst')
+            dst_port_counts[port] += pkt_count
+            
+        if match.get('ip_proto') == 1:
+            icmp_packets += pkt_count
+
+    total_src_pkts = sum(src_ip_counts.values())
     
-    # DỮ LIỆU AN TOÀN - KHỚP 100% VỚI BASELINE.JSON
+    # Tính toán Shannon & Renyi (q=2) Entropy động
+    entropy_src_ip = 0.0
+    entropy_renyi_src = 0.0
+    if total_src_pkts > 0:
+        entropy_src_ip = -sum((c/total_src_pkts) * math.log2(c/total_src_pkts) for c in src_ip_counts.values())
+        sum_sq = sum((c/total_src_pkts)**2 for c in src_ip_counts.values())
+        entropy_renyi_src = -math.log2(sum_sq) if sum_sq > 0 else 0.0
+
+    total_dst_pkts = sum(dst_port_counts.values())
+    entropy_dst_port = 0.0
+    if total_dst_pkts > 0:
+        entropy_dst_port = -sum((c/total_dst_pkts) * math.log2(c/total_dst_pkts) for c in dst_port_counts.values())
+
+    suspect = "10.0.1.10"
+    if src_ip_counts:
+        suspect = src_ip_counts.most_common(1)[0][0]
+
     features = {
-        "pps": pps, "bps": pps * 800, 
-        "entropy_src_ip": 1.29, "entropy_dst_port": 1.33, "entropy_renyi_src": 1.25,
-        "syn_pct": 0.0, "icmp_pct": 0.0,
-        "new_flows_per_sec": 2.0,
-        "suspect_src_ip": "10.0.1.10"
+        "pps": pps, 
+        "bps": pps * 800, 
+        "entropy_src_ip": round(entropy_src_ip, 3), 
+        "entropy_dst_port": round(entropy_dst_port, 3), 
+        "entropy_renyi_src": round(entropy_renyi_src, 3),
+        "syn_pct": 0.0, 
+        "icmp_pct": round(icmp_packets / total_src_pkts, 3) if total_src_pkts > 0 else 0.0,
+        "new_flows_per_sec": len(flows),
+        "suspect_src_ip": suspect
     }
-    
-    # KHI BỊ TẤN CÔNG (hping3 làm pps > 2000)
-    if pps > 2000:
-        features["entropy_src_ip"] = 0.1       
-        features["syn_pct"] = 0.9           
-        for flow in flows:
-            match = flow.get('match', {})
-            if 'ipv4_src' in match and match['ipv4_src'] not in['10.0.1.1', '10.0.2.1', '10.0.4.10']:
-                features["suspect_src_ip"] = match['ipv4_src']
-                break
                 
     return features
 
