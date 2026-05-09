@@ -3,7 +3,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from mitigation import BlacklistManager
+from code.mitigation import BlacklistManager
 
 # Tao mot app gia (mock) de tranh loi khi in log
 class MockApp:
