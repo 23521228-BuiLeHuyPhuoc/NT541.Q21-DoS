@@ -11,7 +11,7 @@ def stack():
     time.sleep(3)
     
     # Khởi động Topology Mininet của nhóm
-    mn = subprocess.Popen(["sudo", "python3", "code/topology/topology_v4.py"],
+    mn = subprocess.Popen(["sudo", "python3", "code/topology/topology_nhom4.py"],
                           stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     time.sleep(8)
     
