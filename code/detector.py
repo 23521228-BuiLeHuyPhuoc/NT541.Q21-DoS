@@ -26,7 +26,7 @@ def extract_features(flows):
         last_total_packets = current_total
         last_check_time = now
         first_run = False
-        pps = 11.4  # Tốc độ an toàn theo baseline
+        pps = 0.0  # Khởi tạo pps thực tế bằng 0 để mạng nhận diện đúng trạng thái Idle
     else:
         delta_packets = current_total - last_total_packets
         delta_time = now - last_check_time
