@@ -1,7 +1,7 @@
 from ryu.app import simple_switch_13
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER, DEAD_DISPATCHER, set_ev_cls
-from ryu.lib.packet import packet, ethernet, arp, ipv4
+from ryu.lib.packet import packet, ethernet, arp, ipv4, tcp, udp, icmp
 from ryu.lib import hub
 from collections import Counter
 import math
@@ -31,6 +31,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.WINDOW_SIZE = 1000            # SO LUONG GOI LUU TRONG WINDOW
         self.src_ip_window = []            # DANH SACH IP NGUON GAN DAY
         self.src_mac_window = []           # DANH SACH MAC TUONG UNG
+        self.proto_window = []             # DANH SACH PROTOCOL (tcp_syn, udp, icmp...)
         self.blocked_ips = set()           # TAP IP DA BI CHAN
         self.blocked_macs = set()          # TAP MAC DA BI CHAN
         self.packet_rate = 0               # DEM SO GOI TRONG MOI CHU KY
@@ -100,30 +101,42 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
 
                 if entropy < self.ENTROPY_LOW:
                     self.attack_status = 1
-                    self.logger.warning("[CANH BAO] Phat hien tan cong DoS bang IP co dinh! Entropy = %.2f (nguong < %.2f)", entropy, self.ENTROPY_LOW)
+                    # PHAN LOAI TAN CONG dua tren protocol
+                    attack_type = self._classify_attack()
+                    self.logger.warning("[CANH BAO] %s! Entropy = %.2f (nguong < %.2f)", attack_type, entropy, self.ENTROPY_LOW)
                     for ip, count in ip_counts.items():
                         if (count / total) > 0.20 and ip not in self.blocked_ips:
                             if ip in self.WHITELIST_SRC:
                                 continue
                             self.logger.warning("[BLOCK] Chan IP %s — da gui %d goi (chiem %.1f%% tong traffic)", ip, count, (count/total)*100)
                             self._block_ip(ip)
-                            self._log_alert(ip, "dos_fixed_ip", "CRITICAL", "Blocked")
+                            self._log_alert(ip, attack_type, "CRITICAL", "Blocked")
 
                 elif entropy > self.ENTROPY_HIGH:
                     self.attack_status = 2
-                    self.logger.warning("[CANH BAO] Phat hien tan cong DoS bang IP gia mao! Entropy = %.2f (nguong > %.2f)", entropy, self.ENTROPY_HIGH)
                     mac_counts = Counter(self.src_mac_window)
-                    for mac, count in mac_counts.most_common():
-                        if mac not in self.blocked_macs:
-                            self.logger.warning("[BLOCK] Chan MAC %s — da gui %d goi spoof (chiem %.1f%% tong traffic)", mac, count, (count/total)*100)
-                            self._block_mac(mac)
-                            self._log_alert(mac, "dos_spoofed_ip", "CRITICAL", "Blocked")
+                    top_mac, top_count = mac_counts.most_common(1)[0] if mac_counts else (None, 0)
+                    
+                    # s06 vs s08: nếu 1 MAC chiếm >50% → spoof (s06), ngược lại → flash crowd (s08)
+                    if top_count / total > 0.5:
+                        attack_type = "s06_ip_spoof"
+                        self.logger.warning("[CANH BAO] %s! Entropy = %.2f (nguong > %.2f)", attack_type, entropy, self.ENTROPY_HIGH)
+                        for mac, count in mac_counts.most_common():
+                            if mac not in self.blocked_macs:
+                                self.logger.warning("[BLOCK] Chan MAC %s — da gui %d goi spoof (chiem %.1f%% tong traffic)", mac, count, (count/total)*100)
+                                self._block_mac(mac)
+                                self._log_alert(mac, attack_type, "CRITICAL", "Blocked")
+                    else:
+                        attack_type = "s08_flash_crowd"
+                        self.logger.warning("[CANH BAO] %s! Entropy = %.2f — nhieu nguoi dung thuc truy cap dong thoi", attack_type, entropy)
+                        self._log_alert("multiple_ips", attack_type, "WARN", "Logged")
                 else:
                     self.attack_status = 0
 
                 # LUON clear window sau moi chu ky 3s de entropy phan anh traffic HIEN TAI
                 self.src_ip_window.clear()
                 self.src_mac_window.clear()
+                self.proto_window.clear()
             else:
                 # Qua it goi (<10) trong 3s vua qua -> coi nhu idle
                 self.last_entropy = 0.0
@@ -146,6 +159,34 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     }])
                 except Exception as e:
                     self.logger.error("[INFLUXDB] Khong the ghi du lieu vao InfluxDB: %s", e)
+
+    def _classify_attack(self):
+        """Phân loại tấn công dựa trên protocol trong window → map 8 kịch bản."""
+        if not self.proto_window:
+            return "s01_syn_flood"
+        proto_counts = Counter(self.proto_window)
+        dominant, count = proto_counts.most_common(1)[0]
+        total = len(self.proto_window)
+        ratio = count / total
+
+        if dominant == 'icmp' and ratio > 0.4:
+            return "s03_icmp_flood"
+        elif dominant == 'udp_dns' and ratio > 0.3:
+            return "s05_dns_ampl"
+        elif dominant == 'udp' and ratio > 0.4:
+            return "s02_udp_flood"
+        elif dominant == 'tcp_http' and ratio > 0.3:
+            # Phân biệt s04 vs s07: slowloris có PPS thấp
+            if self.packet_rate < 50:
+                return "s07_slowloris"
+            return "s04_http_flood"
+        elif dominant == 'tcp_syn' and ratio > 0.4:
+            return "s01_syn_flood"
+        elif dominant == 'tcp' and ratio > 0.3:
+            if self.packet_rate < 50:
+                return "s07_slowloris"
+            return "s04_http_flood"
+        return "s01_syn_flood"
 
     def _log_alert(self, src, attack_type, severity, action):
         """Ghi alert vào file JSON để dashboard /alerts page hiển thị."""
@@ -264,9 +305,31 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             if p_ip.src not in self.gateways:
                 self.src_ip_window.append(p_ip.src)
                 self.src_mac_window.append(p_eth.src)
+                # Theo doi protocol de phan loai tan cong
+                p_tcp = pkt.get_protocol(tcp.tcp)
+                p_udp = pkt.get_protocol(udp.udp)
+                p_icmp = pkt.get_protocol(icmp.icmp)
+                if p_icmp:
+                    self.proto_window.append('icmp')
+                elif p_tcp:
+                    if p_tcp.has_flags(p_tcp.SYN) and not p_tcp.has_flags(p_tcp.ACK):
+                        if p_tcp.dst_port == 80 or p_tcp.dst_port == 443:
+                            self.proto_window.append('tcp_http')
+                        else:
+                            self.proto_window.append('tcp_syn')
+                    else:
+                        self.proto_window.append('tcp')
+                elif p_udp:
+                    if p_udp.dst_port == 53:
+                        self.proto_window.append('udp_dns')
+                    else:
+                        self.proto_window.append('udp')
+                else:
+                    self.proto_window.append('other')
                 if len(self.src_ip_window) > self.WINDOW_SIZE:
                     self.src_ip_window.pop(0)
                     self.src_mac_window.pop(0)
+                    self.proto_window.pop(0)
 
             out_port = None
             for net, port in self.routes.items():
