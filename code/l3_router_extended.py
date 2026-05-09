@@ -4,11 +4,10 @@ import yaml
 import time
 
 from ryu.ofproto import ofproto_v1_3
-from ryu.app.wsgi import WSGIApplication, ControllerBase, route
+from ryu.app.wsgi import WSGIApplication, ControllerBase, route, Response
 from ryu.controller import ofp_event
 from ryu.controller.handler import set_ev_cls, MAIN_DISPATCHER, DEAD_DISPATCHER
 
-# Bỏ tiền tố "code." đi để Ryu không bị lỗi đường dẫn lồng nhau
 from l3_router_test import SimpleRouterEntropy
 from mitigation import BlockModule, RateLimitModule, BlacklistManager
 
@@ -28,10 +27,8 @@ class L3RouterExtended(SimpleRouterEntropy):
         self.ratelimit = RateLimitModule(self)
         self.blacklist = BlacklistManager(self)
         
-        # Thêm biến lưu trữ các switch đang kết nối
         self.datapaths = {}
 
-    # Hàm tự động cập nhật danh sách datapath khi switch (Mininet) kết nối/ngắt kết nối
     @set_ev_cls(ofp_event.EventOFPStateChange, [MAIN_DISPATCHER, DEAD_DISPATCHER])
     def _state_change_handler(self, ev):
         dp = ev.datapath
@@ -51,12 +48,10 @@ class L3RouterExtended(SimpleRouterEntropy):
     def handle_alert(self, payload):
         src = payload['src_ip']
         
-        # Bỏ qua nếu IP nằm trong whitelist
         if src in self.WHITELIST_SRC:
             self.logger.info(f"[whitelist] skip {src}")
             return
             
-        # Reset biến đếm nếu lần vi phạm cuối cách đây hơn 60s
         if time.time() - self.last_violation.get(src, 0) > 60:
             self.violation_count[src] = 0
             
@@ -65,7 +60,6 @@ class L3RouterExtended(SimpleRouterEntropy):
         
         n = self.violation_count[src]
         
-        # Duyệt qua các switch đã lưu trong self.datapaths và áp dụng hình phạt
         for dp in self.datapaths.values():
             if n == 1:
                 self.logger.warning(f"[GR1 LOG] {src} attack={payload['attack']}")
@@ -84,12 +78,10 @@ class AlertAPI(ControllerBase):
     def receive_alert(self, req, **kw):
         payload = json.loads(req.body)
         self.router.handle_alert(payload)
-        return req.create_response(body=b'{"ok":true}',
-                                   content_type='application/json')
+        return Response(content_type='application/json', body=b'{"ok":true}')
 
     @route('block', '/api/block', methods=['POST'])
     def manual_block(self, req, **kw):
         payload = json.loads(req.body)
-        # Bắn lệnh block thủ công
         self.router.handle_alert({**payload, "attack": "manual"})
-        return req.create_response(body=b'{"ok":true}')
+        return Response(content_type='application/json', body=b'{"ok":true}')
