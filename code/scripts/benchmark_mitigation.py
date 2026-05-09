@@ -1,24 +1,33 @@
-"""(1) latency cài N FlowMod; (2) throughput trước/sau block; (3) RTT sau rate-limit."""
 import time
 import requests
 import csv
 import os
 import matplotlib.pyplot as plt
+from concurrent.futures import ThreadPoolExecutor
 
 ALERT = "http://localhost:8081/api/alert"
+
+def send_alert(ip):
+    # Gửi 3 alert cho 1 IP
+    for _ in range(3):
+        try:
+            requests.post(ALERT, json={"src_ip": ip, "attack": "bench"}, timeout=1)
+        except requests.exceptions.RequestException:
+            pass
 
 def measure_flowmod_batch(n, src_pool):
     print(f"[*] Đang đo đạc độ trễ cài đặt {n} FlowMods...")
     t0 = time.time()
-    for i in range(n):
-        ip = src_pool[i % len(src_pool)]
-        # Gửi 3 alert liên tiếp để ép Router kích hoạt Mức 3 (Block - Cài FlowMod Drop)
-        for _ in range(3):  
-            try:
-                requests.post(ALERT, json={"src_ip": ip, "attack": "bench"}, timeout=1)
-            except requests.exceptions.RequestException:
-                pass
+    
+    # Dùng 20 luồng (threads) để gửi request song song
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        for i in range(n):
+            ip = src_pool[i % len(src_pool)]
+            executor.submit(send_alert, ip)
+            
     return time.time() - t0
+
+# ... (Phần vẽ biểu đồ giữ nguyên)
 
 def main():
     # Đảm bảo thư mục tồn tại
