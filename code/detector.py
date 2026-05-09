@@ -2,6 +2,7 @@ import time
 import requests
 import sys
 import math
+import json
 from collections import Counter
 
 from alert_system import AlertSystem
@@ -21,12 +22,11 @@ def extract_features(flows):
     current_total = sum(f.get('packet_count', 0) for f in flows)
     now = time.time()
     
-    # Tính PPS (Packets Per Second)
     if first_run:
         last_total_packets = current_total
         last_check_time = now
         first_run = False
-        pps = 0.0  # Khởi tạo pps thực tế bằng 0 để mạng nhận diện đúng trạng thái Idle
+        pps = 0.0  # Khoi tao 0 de vuot qua loi mang ranh giay dau tien
     else:
         delta_packets = current_total - last_total_packets
         delta_time = now - last_check_time
@@ -34,7 +34,6 @@ def extract_features(flows):
         last_total_packets = current_total
         last_check_time = now
 
-    # Khởi tạo bộ đếm để tính Entropy
     src_ip_counts = Counter()
     dst_port_counts = Counter()
     icmp_packets = 0
@@ -44,27 +43,22 @@ def extract_features(flows):
         match = flow.get('match', {})
         pkt_count = flow.get('packet_count', 0)
         
-        # Đếm IP nguồn
         if 'ipv4_src' in match:
             src_ip_counts[match['ipv4_src']] += pkt_count
             
-        # Đếm Port đích (TCP hoặc UDP)
         if 'tcp_dst' in match:
             dst_port_counts[match['tcp_dst']] += pkt_count
         elif 'udp_dst' in match:
             dst_port_counts[match['udp_dst']] += pkt_count
             
-        # Đếm ICMP (ip_proto == 1)
         if match.get('ip_proto') == 1:
             icmp_packets += pkt_count
             
-        # Heuristic cho SYN (nếu Ryu có đẩy match tcp_flags)
         if match.get('tcp_flags') == 2:
             syn_packets += pkt_count
 
     total_src_pkts = sum(src_ip_counts.values())
     
-    # Tính Shannon & Renyi Entropy cho IP Nguồn
     entropy_src_ip = 0.0
     entropy_renyi_src = 0.0
     if total_src_pkts > 0:
@@ -72,13 +66,11 @@ def extract_features(flows):
         sum_sq = sum((c/total_src_pkts)**2 for c in src_ip_counts.values())
         entropy_renyi_src = -math.log2(sum_sq) if sum_sq > 0 else 0.0
 
-    # Tính Shannon Entropy cho Port Đích
     total_dst_pkts = sum(dst_port_counts.values())
     entropy_dst_port = 0.0
     if total_dst_pkts > 0:
         entropy_dst_port = -sum((c/total_dst_pkts) * math.log2(c/total_dst_pkts) for c in dst_port_counts.values())
 
-    # Xác định IP tình nghi (IP gửi nhiều gói tin nhất)
     suspect = "10.0.1.10"
     if src_ip_counts:
         suspect = src_ip_counts.most_common(1)[0][0]
@@ -102,7 +94,7 @@ def main():
         alr = AlertSystem()
         ent_det = EntropyDetector()
         stat_det = StatsDetector()
-        sig_matcher = SignatureMatcher()  # Luật được load vào RAM tại đây
+        sig_matcher = SignatureMatcher()
         
         print("[detector] Orchestrator dang chay... (chu ky 1s)")
         
@@ -112,10 +104,14 @@ def main():
                 flows = resp.json().get("2", [])
                 features = extract_features(flows)
                 
-                # CHỐT CHẶN TRAFFIC GUARD: Bỏ qua nếu mạng đang rảnh (Idle Network Paradox)
+                # CHOT CHAN TRAFFIC GUARD
                 if features.get("pps", 0) < 5:
                     time.sleep(1)
                     continue
+                
+                # XUAT DU LIEU THUC TE CHO DASHBOARD
+                with open("results/raw/current_features.json", "w") as f:
+                    json.dump(features, f)
                 
                 ent_res = ent_det.check(features)
                 stat_res = stat_det.check(features)
@@ -140,7 +136,6 @@ def main():
                     suspect_ip = features.get("suspect_src_ip", "10.0.1.10")
                     alr.emit(suspect_ip, attack_type, n_rules, evidence)
             except Exception as e:
-                # Bỏ qua lỗi kết nối tạm thời khi gọi Ryu API
                 pass
             time.sleep(1)
     except Exception as e:
