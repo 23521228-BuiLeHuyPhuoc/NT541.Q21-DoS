@@ -43,7 +43,7 @@ def main():
     stat_det = StatsDetector()
     sig_matcher = SignatureMatcher()
 
-    print("[detector] Orchestrator đang chạy... (chu kỳ 1s)")
+    print("[detector] Orchestrator dang chay... (chu ky 1s)")
     
     while True:
         try:
@@ -83,7 +83,7 @@ def main():
                 alr.emit(suspect_ip, attack_type, n_rules, evidence)
                 
         except Exception as e:
-            print(f"[detector] Lỗi trong vòng lặp orchestrator: {e}")
+            print(f"[detector] Loi trong vong lap orchestrator: {e}")
             
         time.sleep(1)
 
