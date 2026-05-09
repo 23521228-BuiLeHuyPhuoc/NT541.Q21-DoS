@@ -41,44 +41,9 @@ class L3RouterExtended(SimpleRouterEntropy):
         except FileNotFoundError:
             return set()
 
-    # FIX TẬN GỐC SELF-DOS: Cài flow xuống Switch thay vì đẩy hết gói tin lên Controller
-    @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def _packet_in_handler(self, ev):
-        msg = ev.msg
-        dp = msg.datapath
-        
-        # Gọi hàm của class cha để xử lý ARP và các logic cơ bản trước
-        super()._packet_in_handler(ev)
-        
-        # Nếu là switch s2 (router L3) và là gói tin IP
-        if dp.id == 2:
-            pkt = packet.Packet(msg.data)
-            p_ip = pkt.get_protocol(ipv4.ipv4)
-            
-            if p_ip and p_ip.dst in self.arp_table:
-                # Tìm cổng đầu ra
-                out_port = None
-                for net, port in self.routes.items():
-                    if p_ip.dst.startswith(net):
-                        out_port = port
-                        break
-                        
-                if out_port:
-                    parser = dp.ofproto_parser
-                    actions =[
-                        parser.OFPActionSetField(eth_src=self.mac),
-                        parser.OFPActionSetField(eth_dst=self.arp_table[p_ip.dst]),
-                        parser.OFPActionOutput(out_port)
-                    ]
-                    match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst)
-                    
-                    # Cài flow: Whitelist thì lưu 30s, IP lạ (Attacker) thì lưu 5s
-                    idle_timeout = 30 if p_ip.src in self.WHITELIST_SRC else 5
-                    
-                    inst =[parser.OFPInstructionActions(dp.ofproto.OFPIT_APPLY_ACTIONS, actions)]
-                    mod = parser.OFPFlowMod(datapath=dp, priority=10, match=match,
-                                            instructions=inst, idle_timeout=idle_timeout)
-                    dp.send_msg(mod)
+    # Không override _packet_in_handler — để class cha (SimpleRouterEntropy) xử lý.
+    # Class cha chỉ cài flow cho whitelist IP, non-whitelist luôn đi qua controller
+    # → entropy window được cập nhật liên tục khi bị tấn công.
 
     def handle_alert(self, payload):
         src = payload.get('src_ip')
@@ -95,15 +60,19 @@ class L3RouterExtended(SimpleRouterEntropy):
         self.last_violation[src] = time.time()
         
         n = self.violation_count[src]
+        attack = payload.get('attack', 'unknown')
         
         for dp in self.dps.values():
             if n == 1:
-                self.logger.warning(f"[GR1 LOG] {src} attack={payload.get('attack')}")
+                self.logger.warning(f"[GR1 LOG] {src} attack={attack}")
+                self._log_alert(src, attack, "INFO", "Logged")
             elif n == 2:
                 self.ratelimit.apply(dp, src, pps=1000)
+                self._log_alert(src, attack, "WARN", "Rate-Limited")
             else:
                 self.block.apply(dp, src, timeout=60)
                 self.blacklist.add(src, ttl=60)
+                self._log_alert(src, attack, "CRITICAL", "Blocked")
 
 class AlertAPI(ControllerBase):
     def __init__(self, req, link, data, **config):

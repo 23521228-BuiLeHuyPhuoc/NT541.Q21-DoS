@@ -6,6 +6,8 @@ from ryu.lib import hub
 from collections import Counter
 import math
 import time
+import json
+import os
 
 try:
     from influxdb import InfluxDBClient
@@ -103,6 +105,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                                 continue
                             self.logger.warning("[BLOCK] Chan IP %s — da gui %d goi (chiem %.1f%% tong traffic)", ip, count, (count/total)*100)
                             self._block_ip(ip)
+                            self._log_alert(ip, "dos_fixed_ip", "CRITICAL", "Blocked")
                     self.src_ip_window.clear()
                     self.src_mac_window.clear()
 
@@ -115,6 +118,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                         if mac not in self.blocked_macs:
                             self.logger.warning("[BLOCK] Chan MAC %s — da gui %d goi spoof (chiem %.1f%% tong traffic)", mac, count, (count/total)*100)
                             self._block_mac(mac)
+                            self._log_alert(mac, "dos_spoofed_ip", "CRITICAL", "Blocked")
                     self.src_ip_window.clear()
                     self.src_mac_window.clear()
                 else:
@@ -139,6 +143,25 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     }])
                 except Exception as e:
                     self.logger.error("[INFLUXDB] Khong the ghi du lieu vao InfluxDB: %s", e)
+
+    def _log_alert(self, src, attack_type, severity, action):
+        """Ghi alert vào file JSON để dashboard /alerts page hiển thị."""
+        try:
+            alert = {
+                "timestamp": time.time(),
+                "src_ip": src,
+                "attack": attack_type,
+                "severity": severity,
+                "n_rules": 1 if severity == "INFO" else (2 if severity == "WARN" else 3),
+                "action": action
+            }
+            alerts_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                       '..', 'results', 'raw', 'alerts.json')
+            os.makedirs(os.path.dirname(alerts_file), exist_ok=True)
+            with open(alerts_file, 'a') as f:
+                f.write(json.dumps(alert) + "\n")
+        except Exception as e:
+            self.logger.error("[ALERT LOG] Loi ghi alert: %s", e)
 
     def _block_ip(self, bad_ip):
         self.blocked_ips.add(bad_ip)
@@ -200,6 +223,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     if pps > 500 and src not in self.blocked_ips:
                         self.logger.warning("[BLOCK] Chan IP %s — toc do qua cao: %d goi/giay (nguong: 500)", src, int(pps))
                         self._block_ip(src)
+                        self._log_alert(src, "high_pps_flood", "WARN", "Blocked")
             self.flow_stats[key] = (stat.packet_count, now)
         self.total_pps = int(sum_pps)
 
@@ -232,7 +256,9 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         if p_ip:
             self.packet_rate += 1
 
-            if p_ip.src not in self.gateways and p_ip.src not in self.WHITELIST_SRC:
+            # Ghi TẤT CẢ IP vào window (kể cả whitelist) để pingall tạo entropy cao
+            # Chỉ loại gateway IP (không phải traffic thực)
+            if p_ip.src not in self.gateways:
                 self.src_ip_window.append(p_ip.src)
                 self.src_mac_window.append(p_eth.src)
                 if len(self.src_ip_window) > self.WINDOW_SIZE:
