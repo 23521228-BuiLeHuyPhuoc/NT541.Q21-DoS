@@ -38,7 +38,7 @@ def extract_features(flows):
         match = flow.get('match', {})
         pkt_count = flow.get('packet_count', 0)
         
-        # FIX: Hỗ trợ cả 2 định dạng ipv4_src và nw_src của Ryu REST API
+        # Tương thích cả 2 chuẩn API của Ryu
         src_ip = match.get('ipv4_src') or match.get('nw_src')
         if src_ip:
             src_ip_counts[src_ip] += pkt_count
@@ -59,9 +59,15 @@ def extract_features(flows):
     if total_src_pkts > 0:
         entropy_src_ip = -sum((c/total_src_pkts) * math.log2(c/total_src_pkts) for c in src_ip_counts.values())
 
-    # In log ra terminal de theo doi
-    if total_src_pkts > 0:
-        print(f"[ENTROPY] Gia tri entropy = {round(entropy_src_ip, 2)} | Tong goi = {total_src_pkts} | So IP duy nhat = {len(src_ip_counts)}")
+    # --- IN RA TERMINAL GIẢI THÍCH LÝ DO CHO BẠN HIỂU ---
+    timestamp = time.strftime('%H:%M:%S')
+    if total_src_pkts == 0:
+        print(f"[{timestamp}] Mạng ĐANG TRỐNG (Flow đã bị xóa/Chưa có traffic) -> Entropy = 0.0")
+    elif len(src_ip_counts) == 1:
+        ip = list(src_ip_counts.keys())[0]
+        print(f"[{timestamp}] Traffic chỉ từ 1 IP duy nhất ({ip}) -> Entropy = 0.0 (Dấu hiệu bị DDoS)")
+    else:
+        print(f"[{timestamp}] Mạng BÌNH THƯỜNG: Có {len(src_ip_counts)} IPs đang gửi | Tổng gói: {total_src_pkts} | Entropy = {round(entropy_src_ip, 2)}")
 
     features = {
         "pps": pps, "bps": pps * 800, 
@@ -86,14 +92,13 @@ def main():
                 flows = resp.json().get("2",[])
                 features = extract_features(flows)
                 
-                # Ghi file Atomic (ghi ra file tam roi rename) de Dashboard khong doc phai file trong (empty file)
                 temp_path = JSON_PATH + ".tmp"
                 with open(temp_path, "w") as f:
                     json.dump(features, f)
                 os.replace(temp_path, JSON_PATH)
                 
-                # Bo qua phan tich neu mang dang qua ranh roi (< 5 pps)
-                if features.get("pps", 0) < 5:
+                # Nới lỏng kiểm tra để detector luôn đọc dù mạng có ít gói
+                if features.get("pps", 0) < 1:
                     time.sleep(1)
                     continue
                 
@@ -105,31 +110,18 @@ def main():
                 evidence =[]
                 attack_type = "anomaly_traffic"
                 
-                if ent_res.get("anomaly"): 
-                    n_rules += 1
-                    evidence.extend(ent_res.get("alerts",[]))
-                
-                if stat_res.get("anomaly"): 
-                    n_rules += 1
-                    evidence.extend(stat_res.get("alerts",[]))
-                
+                if ent_res.get("anomaly"): n_rules += 1; evidence.extend(ent_res.get("alerts",[]))
+                if stat_res.get("anomaly"): n_rules += 1; evidence.extend(stat_res.get("alerts",[]))
                 if sig_hits:
-                    n_rules += len(sig_hits)
-                    evidence.extend(sig_hits)
+                    n_rules += len(sig_hits); evidence.extend(sig_hits)
                     attack_type = sig_hits[0].get("attack", "known_signature")
                     
-                # Chi gui Alert khi it nhat 1 rule bi pham
                 if n_rules > 0:
                     alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
-            
-            except Exception as e:
+            except Exception: 
                 pass
-            
-            # Chu ky quet 1s/lan
             time.sleep(1)
-            
-    except Exception as e: 
-        print(f"Error: {e}")
+    except Exception as e: print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
