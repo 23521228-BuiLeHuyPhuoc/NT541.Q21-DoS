@@ -11,6 +11,15 @@ ALERT_LOG = "results/raw/alerts.json"
 DETECTOR_LOG = "results/raw/detector.log"
 RYU_LOG = "results/raw/ryu.log"
 
+def kill_existing():
+    """Kill moi ryu-manager va detector dang chay truoc khi bat dau."""
+    print("[*] Dang kill cac tien trinh cu (ryu-manager, detector)...")
+    subprocess.run(["pkill", "-9", "-f", "ryu-manager"], check=False,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["pkill", "-9", "-f", "code/detector.py"], check=False,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(2)  # Doi port 8081 duoc nha ra
+
 def start_topology():
     print("[*] Dang don dep Mininet...")
     subprocess.run(["sudo", "mn", "-c"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -29,6 +38,20 @@ def start_ryu():
                          stdout=ryu_out, stderr=subprocess.STDOUT,
                          start_new_session=True)
     time.sleep(3)
+
+    # Kiem tra Ryu con song khong
+    if p.poll() is not None:
+        print("  [!] LOI: Ryu da chet ngay khi khoi dong! Kiem tra results/raw/ryu.log")
+        ryu_out.close()
+        sys.exit(1)
+
+    # Kiem tra REST API hoat dong
+    try:
+        r = requests.get("http://localhost:8081/stats/switches", timeout=2)
+        print(f"  [OK] Ryu REST API hoat dong (switches: {r.text.strip()})")
+    except Exception:
+        print("  [!] CANH BAO: Ryu REST API chua san sang, tiep tuc...")
+
     return p, ryu_out
 
 def start_detector():
@@ -67,6 +90,15 @@ def wait_for_flowmod(t0, src_ip, timeout=20):
 def run(scenario_id):
     os.makedirs("results/raw", exist_ok=True)
     
+    # Fix quyen truy cap file (truong hop sudo tao file root)
+    for f in [ALERT_LOG, DETECTOR_LOG, RYU_LOG]:
+        if os.path.exists(f):
+            subprocess.run(["chmod", "666", f], check=False,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Kill moi tien trinh cu truoc
+    kill_existing()
+
     # Reset log alert
     open(ALERT_LOG, 'w').close()
 
@@ -125,11 +157,11 @@ def run(scenario_id):
         # Dùng os.killpg vì mỗi subprocess chạy trong session riêng
         try:
             os.killpg(os.getpgid(det.pid), signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
+        except (ProcessLookupError, PermissionError, OSError):
             det.terminate()
         try:
             os.killpg(os.getpgid(ryu.pid), signal.SIGTERM)
-        except (ProcessLookupError, PermissionError):
+        except (ProcessLookupError, PermissionError, OSError):
             ryu.terminate()
         det_out.close()
         ryu_out.close()
