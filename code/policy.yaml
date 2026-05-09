@@ -1,0 +1,13 @@
+graduated_response:
+  - level: 1
+    action: log
+    threshold: 1
+  - level: 2
+    action: rate_limit
+    pps: 1000
+    threshold: 2
+    duration: 120
+  - level: 3
+    action: block
+    threshold: 3
+    duration: 60
