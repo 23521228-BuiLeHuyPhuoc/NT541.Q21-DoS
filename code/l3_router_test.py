@@ -60,7 +60,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 self.logger.error("[INFLUXDB] Khong the ket noi den InfluxDB: %s", e)
                 self.influx_client = None
         else:
-            self.logger.warning("[INFLUXDB] Thu vien influxdb chua duoc cai dat. Chay: pip install influxdb")
+            self.logger.warning("[INFLUXDB] Thu vien influxdb chua duoc cai dat.")
 
         # --- FLOW STATS ---
         self.flow_stats = {}
@@ -97,7 +97,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     entropy -= p * math.log2(p)
 
                 self.last_entropy = entropy
-                self.logger.info("[ENTROPY] Gia tri entropy = %.2f | Tong goi = %d | So IP duy nhat = %d", entropy, total, len(ip_counts))
+
 
                 if entropy < self.ENTROPY_LOW:
                     self.attack_status = 1

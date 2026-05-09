@@ -57,6 +57,6 @@ class SignatureMatcher:
                         "rule": rule_text,
                         "papers": r.get('papers','')
                     })
-            except Exception as e:
-                print(f"[sig] eval error {r.get('name')}: {e}")
+            except Exception:
+                pass
         return hits

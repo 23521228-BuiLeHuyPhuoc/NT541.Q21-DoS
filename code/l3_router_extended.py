@@ -50,7 +50,6 @@ class L3RouterExtended(SimpleRouterEntropy):
         if not src: return
         
         if src in self.WHITELIST_SRC:
-            self.logger.info(f"[whitelist] skip {src}")
             return
             
         if time.time() - self.last_violation.get(src, 0) > 60:
@@ -64,7 +63,7 @@ class L3RouterExtended(SimpleRouterEntropy):
         
         for dp in self.dps.values():
             if n == 1:
-                self.logger.warning(f"[GR1 LOG] {src} attack={attack}")
+                self.logger.warning(f"[ALERT] {src} attack={attack}")
                 self._log_alert(src, attack, "INFO", "Logged")
             elif n == 2:
                 self.ratelimit.apply(dp, src, pps=1000)

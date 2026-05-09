@@ -1,14 +1,11 @@
 from flask import Flask, render_template, jsonify, request
-import os, json, requests, time, math
+import os, json, requests, time
 from datetime import datetime
-from collections import Counter
 
 app = Flask(__name__)
 entropy_history = []
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Trạng thái delta cho entropy real-time
-_prev_flow_counts = {}
 
 RYU_ENTROPY_URL = "http://127.0.0.1:8081/api/entropy"
 RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
@@ -103,8 +100,8 @@ def flows_page():
         resp = requests.get("http://127.0.0.1:8081/stats/flow/2", timeout=2)
         if resp.status_code == 200:
             flows_data = resp.json().get("2", [])
-    except Exception as e:
-        print(f"[DASHBOARD ERR] Lỗi kết nối đến Ryu: {e}")
+    except Exception:
+        pass
         
     return render_template('flows.html', dpid=2, flows=flows_data)
 
