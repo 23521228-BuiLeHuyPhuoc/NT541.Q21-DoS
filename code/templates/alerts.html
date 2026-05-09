@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alerts Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .CRITICAL { color: red; font-weight: bold; }
+        .WARN { color: orange; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h2>Danh sách Cảnh báo (Alerts)</h2>
+    <a href="/">← Quay lại Biểu đồ (Home)</a> | <a href="/flows">Xem Flows →</a>
+    
+    <table>
+        <tr>
+            <th>Time</th>
+            <th>Source IP</th>
+            <th>Attack Type</th>
+            <th>Severity</th>
+            <th>Action</th>
+        </tr>
+        {% for alert in alerts %}
+        <tr>
+            <td>{{ alert.time }}</td>
+            <td>{{ alert.src_ip }}</td>
+            <td>{{ alert.attack }}</td>
+            <td class="{{ alert.severity }}">{{ alert.severity }}</td>
+            <td>{{ alert.action }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="5" style="text-align: center;">Chưa có cảnh báo nào.</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
