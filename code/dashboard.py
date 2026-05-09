@@ -44,7 +44,7 @@ def stats():
 @app.route('/alerts')
 def alerts_page():
     alerts_data =[]
-    alerts_file = "results/raw/alerts.json"
+    alerts_file = os.path.join(_BASE_DIR, '..', 'results', 'raw', 'alerts.json')
     
     if os.path.exists(alerts_file):
         with open(alerts_file, "r") as f:

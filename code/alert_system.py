@@ -3,7 +3,8 @@ from collections import defaultdict
 
 TV4_ENDPOINT = "http://127.0.0.1:8081/api/alert"
 DEDUP_WINDOW = 5
-LOG_PATH = "results/raw/alerts.json"
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_PATH = os.path.join(_BASE_DIR, '..', 'results', 'raw', 'alerts.json')
 
 class AlertSystem:
     def __init__(self):
