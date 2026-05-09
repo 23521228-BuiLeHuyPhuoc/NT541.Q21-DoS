@@ -7,27 +7,32 @@ import requests
 
 RYU_REST = "http://localhost:8080/stats/flow/2"
 ALERT_LOG = "results/raw/alerts.json"
+DETECTOR_LOG = "results/raw/detector.log"
+RYU_LOG = "results/raw/ryu.log"
 
 def start_topology():
-    print("[*] Dang don dep moi truong Mininet cu...")
+    print("[*] Dang don dep Mininet...")
     subprocess.run(["sudo", "mn", "-c"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     
     print("[*] Dang khoi dong Topology V4...")
     p = subprocess.Popen(["sudo", "python3", "code/topology/topology_v4.py"],
-                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                         stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(8)
     return p
 
 def start_ryu():
-    print("[*] Dang khoi dong Ryu Controller...")
+    print(f"[*] Dang khoi dong Ryu (log: {RYU_LOG})...")
+    ryu_out = open(RYU_LOG, 'w')
     p = subprocess.Popen(["ryu-manager", "--wsapi-port", "8081", "code/l3_router_extended.py"],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                         stdout=ryu_out, stderr=subprocess.STDOUT)
     time.sleep(3)
-    return p
+    return p, ryu_out
 
 def start_detector():
-    print("[*] Dang khoi dong Detector Orchestrator...")
-    return subprocess.Popen(["python3", "code/detector.py"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    print(f"[*] Dang khoi dong Detector (log: {DETECTOR_LOG})...")
+    det_out = open(DETECTOR_LOG, 'w')
+    p = subprocess.Popen(["python3", "code/detector.py"], stdout=det_out, stderr=subprocess.STDOUT)
+    return p, det_out
 
 def wait_for_alert(t0, timeout=15):
     while time.time() - t0 < timeout:
@@ -37,7 +42,7 @@ def wait_for_alert(t0, timeout=15):
                     for line in f:
                         if not line.strip(): continue
                         ev = json.loads(line)
-                        if ev["timestamp"] >= t0:
+                        if ev.get("timestamp", 0) >= t0:
                             return ev["timestamp"] - t0
             except Exception: 
                 pass
@@ -58,14 +63,13 @@ def wait_for_flowmod(t0, src_ip, timeout=20):
 def run(scenario_id):
     os.makedirs("results/raw", exist_ok=True)
     
-    # Reset file log alert
-    with open(ALERT_LOG, 'w') as f:
-        pass 
+    # Reset log alert
+    open(ALERT_LOG, 'w').close()
 
     print(f"\n========== BAT DAU KICH BAN: {scenario_id} ==========")
     mn = start_topology()
-    ryu = start_ryu()
-    det = start_detector()
+    ryu, ryu_out = start_ryu()
+    det, det_out = start_detector()
     
     try:
         t0 = time.time()
@@ -80,7 +84,7 @@ def run(scenario_id):
         if detect_lat:
             print(f"  [+] Da phat hien tan cong! Do tre: {detect_lat:.3f}s")
         else:
-            print(f"  [-] Khong phat hien duoc canh bao nao trong 15s.")
+            print("  [-] Khong phat hien duoc canh bao. Kiem tra log cua detector hoac ryu.")
 
         print("[*] Dang cho he thong ngan chan (Mitigate)...")
         mitigate_lat = wait_for_flowmod(t0, src, timeout=20)
@@ -108,6 +112,8 @@ def run(scenario_id):
         print("[*] Dang don dep va tat cac tien trinh...")
         det.terminate()
         ryu.terminate()
+        det_out.close()
+        ryu_out.close()
         try: 
             mn.communicate(b"exit\n", timeout=10)
         except: 
