@@ -1,8 +1,8 @@
 """Mitigation router — kế thừa SimpleRouterEntropy + REST + graduated response."""
 from ryu.ofproto import ofproto_v1_3
 from ryu.app.wsgi import WSGIApplication, ControllerBase, route
-from code.l3_router_test import SimpleRouterEntropy
-from code.mitigation import BlockModule, RateLimitModule, BlacklistManager
+from l3_router_test import SimpleRouterEntropy
+from mitigation import BlockModule, RateLimitModule, BlacklistManager
 import json, yaml, time
 
 class L3RouterExtended(SimpleRouterEntropy):
