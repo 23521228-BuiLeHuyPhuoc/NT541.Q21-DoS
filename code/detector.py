@@ -37,14 +37,20 @@ def extract_features(flows):
     for flow in flows:
         match = flow.get('match', {})
         pkt_count = flow.get('packet_count', 0)
-        if 'ipv4_src' in match:
-            src_ip_counts[match['ipv4_src']] += pkt_count
-        if 'tcp_dst' in match:
-            dst_port_counts[match['tcp_dst']] += pkt_count
-        elif 'udp_dst' in match:
-            dst_port_counts[match['udp_dst']] += pkt_count
-        if match.get('ip_proto') == 1:
+        
+        # FIX: Hỗ trợ cả 2 định dạng ipv4_src và nw_src của Ryu REST API
+        src_ip = match.get('ipv4_src') or match.get('nw_src')
+        if src_ip:
+            src_ip_counts[src_ip] += pkt_count
+            
+        dst_port = match.get('tcp_dst') or match.get('tp_dst') or match.get('udp_dst')
+        if dst_port:
+            dst_port_counts[dst_port] += pkt_count
+            
+        ip_proto = match.get('ip_proto') or match.get('nw_proto')
+        if ip_proto == 1:
             icmp_packets += pkt_count
+            
         if match.get('tcp_flags') == 2:
             syn_packets += pkt_count
 
@@ -53,7 +59,7 @@ def extract_features(flows):
     if total_src_pkts > 0:
         entropy_src_ip = -sum((c/total_src_pkts) * math.log2(c/total_src_pkts) for c in src_ip_counts.values())
 
-    # Log ra terminal giong ban dang dung de doi chieu
+    # In log ra terminal de theo doi
     if total_src_pkts > 0:
         print(f"[ENTROPY] Gia tri entropy = {round(entropy_src_ip, 2)} | Tong goi = {total_src_pkts} | So IP duy nhat = {len(src_ip_counts)}")
 
@@ -69,39 +75,61 @@ def extract_features(flows):
 def main():
     try:
         alr = AlertSystem()
-        ent_det = EntropyDetector(); stat_det = StatsDetector(); sig_matcher = SignatureMatcher()
+        ent_det = EntropyDetector()
+        stat_det = StatsDetector()
+        sig_matcher = SignatureMatcher()
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
         
         while True:
             try:
                 resp = requests.get(RYU_FLOW_URL, timeout=2)
-                flows = resp.json().get("2", [])
+                flows = resp.json().get("2",[])
                 features = extract_features(flows)
                 
-                # Ghi file Atomic (ghi ra file tam roi rename) de Dashboard khong doc file trong
+                # Ghi file Atomic (ghi ra file tam roi rename) de Dashboard khong doc phai file trong (empty file)
                 temp_path = JSON_PATH + ".tmp"
                 with open(temp_path, "w") as f:
                     json.dump(features, f)
                 os.replace(temp_path, JSON_PATH)
                 
+                # Bo qua phan tich neu mang dang qua ranh roi (< 5 pps)
                 if features.get("pps", 0) < 5:
-                    time.sleep(1); continue
+                    time.sleep(1)
+                    continue
                 
-                ent_res = ent_det.check(features); stat_res = stat_det.check(features)
+                ent_res = ent_det.check(features)
+                stat_res = stat_det.check(features)
                 sig_hits = sig_matcher.match(features)
                 
-                n_rules = 0; evidence = []; attack_type = "anomaly_traffic"
-                if ent_res.get("anomaly"): n_rules += 1; evidence.extend(ent_res.get("alerts", []))
-                if stat_res.get("anomaly"): n_rules += 1; evidence.extend(stat_res.get("alerts", []))
+                n_rules = 0
+                evidence =[]
+                attack_type = "anomaly_traffic"
+                
+                if ent_res.get("anomaly"): 
+                    n_rules += 1
+                    evidence.extend(ent_res.get("alerts",[]))
+                
+                if stat_res.get("anomaly"): 
+                    n_rules += 1
+                    evidence.extend(stat_res.get("alerts",[]))
+                
                 if sig_hits:
-                    n_rules += len(sig_hits); evidence.extend(sig_hits)
+                    n_rules += len(sig_hits)
+                    evidence.extend(sig_hits)
                     attack_type = sig_hits[0].get("attack", "known_signature")
                     
+                # Chi gui Alert khi it nhat 1 rule bi pham
                 if n_rules > 0:
                     alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
-            except Exception: pass
+            
+            except Exception as e:
+                pass
+            
+            # Chu ky quet 1s/lan
             time.sleep(1)
-    except Exception as e: print(f"Error: {e}")
+            
+    except Exception as e: 
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()
