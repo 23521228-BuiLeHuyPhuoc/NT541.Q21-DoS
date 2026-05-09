@@ -66,8 +66,8 @@
                 /* Hien thi debug info */
                 const latest = data.values.length > 0 ? data.values[data.values.length - 1] : 'N/A';
                 document.getElementById('debugInfo').textContent = 
-                    'Entropy hien tai: ' + latest + ' | So diem du lieu: ' + data.values.length +
-                    ' | JSON exists: ' + data.debug_json_exists + ' | Raw: ' + JSON.stringify(data.debug_raw);
+                    'Entropy hien tai: ' + latest + ' | So diem: ' + data.values.length +
+                    ' | ' + data.debug_info;
             } catch (error) {
                 document.getElementById('debugInfo').textContent = 'LOI: ' + error.message;
                 console.error("Loi khi lay du lieu: ", error);

@@ -1,11 +1,57 @@
 from flask import Flask, render_template, jsonify, request
-import os, json, requests, time
+import os, json, requests, time, math
 from datetime import datetime
+from collections import Counter
 
 app = Flask(__name__)
-entropy_history =[]
+entropy_history = []
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.json")
+
+# Trạng thái delta cho entropy real-time
+_prev_flow_counts = {}
+
+RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
+
+def _compute_entropy_from_ryu():
+    """Gọi Ryu REST API trực tiếp, tính Shannon entropy từ delta flow stats."""
+    global _prev_flow_counts
+    
+    try:
+        resp = requests.get(RYU_FLOW_URL, timeout=2)
+        flows = resp.json().get("2", [])
+    except Exception as e:
+        return 3.4, f"Ryu error: {e}"
+
+    src_ip_counts = Counter()
+    current_flow_counts = {}
+    
+    for flow in flows:
+        match = flow.get('match', {})
+        pkt_count = flow.get('packet_count', 0)
+        
+        match_str = str(match)
+        current_flow_counts[match_str] = pkt_count
+        
+        # Delta: chỉ đếm gói TIN MỚI kể từ lần poll trước
+        last_count = _prev_flow_counts.get(match_str, 0)
+        delta_pkt = pkt_count - last_count if pkt_count >= last_count else pkt_count
+        
+        if delta_pkt == 0:
+            continue
+        
+        src_ip = match.get('ipv4_src') or match.get('nw_src')
+        if src_ip:
+            src_ip_counts[src_ip] += delta_pkt
+
+    _prev_flow_counts = current_flow_counts
+    
+    total = sum(src_ip_counts.values())
+    if total > 0:
+        entropy = -sum((c/total) * math.log2(c/total) for c in src_ip_counts.values())
+        info = f"{len(src_ip_counts)} IPs, {total} pkts/interval"
+        return round(entropy, 3), info
+    
+    return 3.4, "No new packets (idle)"
 
 # ==========================================
 # 1. TRANG CHÍNH - BIỂU ĐỒ ENTROPY
@@ -17,20 +63,8 @@ def home():
 @app.route('/api/stats')
 def stats(): 
     global entropy_history
-    current_entropy = 3.4 
-    debug_raw = {}
-    json_exists = False
     
-    try:
-        json_exists = os.path.exists(JSON_PATH)
-        if json_exists and os.path.getsize(JSON_PATH) > 0:
-            with open(JSON_PATH, "r") as f:
-                features = json.load(f)
-                debug_raw = features
-                current_entropy = features.get("entropy_src_ip", 3.4)
-    except Exception as e:
-        debug_raw = {"error": str(e)}
-        print(f"[DASHBOARD ERR] {e}")
+    current_entropy, debug_info = _compute_entropy_from_ryu()
 
     now_str = datetime.now().strftime('%H:%M:%S')
     entropy_history.append({"label": now_str, "value": current_entropy})
@@ -45,9 +79,7 @@ def stats():
     return jsonify({
         "labels": labels, 
         "values": values,
-        "debug_json_exists": json_exists,
-        "debug_json_path": JSON_PATH,
-        "debug_raw": debug_raw
+        "debug_info": debug_info
     })
 
 # ==========================================
