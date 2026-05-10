@@ -1,0 +1,11 @@
+{
+  "scenario": "s06_ip_spoof",
+  "timestamp": 1778386261.0133018,
+  "detect_latency": 0.6553957462310791,
+  "mitigate_latency": 5.678710699081421,
+  "attack_window": [
+    1778386261.0133018,
+    1778386561.0133018
+  ],
+  "expected_alert": true
+}

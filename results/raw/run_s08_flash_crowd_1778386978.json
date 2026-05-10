@@ -1,0 +1,11 @@
+{
+  "scenario": "s08_flash_crowd",
+  "timestamp": 1778386978.732669,
+  "detect_latency": 0.3411533832550049,
+  "mitigate_latency": null,
+  "attack_window": [
+    1778386978.732669,
+    1778387278.732669
+  ],
+  "expected_alert": false
+}

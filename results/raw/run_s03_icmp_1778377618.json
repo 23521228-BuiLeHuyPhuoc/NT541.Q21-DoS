@@ -1,0 +1,11 @@
+{
+  "scenario": "s03_icmp",
+  "timestamp": 1778377618.1846895,
+  "detect_latency": 0.5933175086975098,
+  "mitigate_latency": 5.558732032775879,
+  "attack_window": [
+    1778377618.1846895,
+    1778377918.1846895
+  ],
+  "expected_alert": true
+}

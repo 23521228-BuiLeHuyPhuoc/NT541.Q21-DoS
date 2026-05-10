@@ -1,0 +1,11 @@
+{
+  "scenario": "s04_http",
+  "timestamp": 1778383271.244129,
+  "detect_latency": 0.31478333473205566,
+  "mitigate_latency": 0.5178053379058838,
+  "attack_window": [
+    1778383271.244129,
+    1778383571.244129
+  ],
+  "expected_alert": true
+}

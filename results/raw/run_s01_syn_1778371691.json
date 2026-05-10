@@ -1,0 +1,11 @@
+{
+  "scenario": "s01_syn",
+  "timestamp": 1778371691.6482081,
+  "detect_latency": null,
+  "mitigate_latency": null,
+  "attack_window": [
+    1778371691.6482081,
+    1778371991.6482081
+  ],
+  "expected_alert": true
+}

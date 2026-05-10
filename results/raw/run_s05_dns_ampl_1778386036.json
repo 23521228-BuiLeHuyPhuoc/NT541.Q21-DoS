@@ -1,0 +1,11 @@
+{
+  "scenario": "s05_dns_ampl",
+  "timestamp": 1778386036.7946773,
+  "detect_latency": 0.35398387908935547,
+  "mitigate_latency": 0.5187759399414062,
+  "attack_window": [
+    1778386036.7946773,
+    1778386336.7946773
+  ],
+  "expected_alert": true
+}

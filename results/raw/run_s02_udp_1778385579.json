@@ -1,0 +1,11 @@
+{
+  "scenario": "s02_udp",
+  "timestamp": 1778385579.7634616,
+  "detect_latency": 0.37634706497192383,
+  "mitigate_latency": 0.5127456188201904,
+  "attack_window": [
+    1778385579.7634616,
+    1778385879.7634616
+  ],
+  "expected_alert": true
+}

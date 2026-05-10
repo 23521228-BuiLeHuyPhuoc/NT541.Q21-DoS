@@ -1,0 +1,1 @@
+t,entropy_src_ip,entropy_dst_ip,entropy_dst_port,entropy_renyi_src,pps,bps,syn_pct,icmp_pct,new_flows_per_sec,avg_pkt_size

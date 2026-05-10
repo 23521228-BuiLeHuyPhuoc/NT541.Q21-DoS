@@ -1,0 +1,11 @@
+{
+  "scenario": "s07_slowloris",
+  "timestamp": 1778379402.0866406,
+  "detect_latency": 0.36175107955932617,
+  "mitigate_latency": 0.5236070156097412,
+  "attack_window": [
+    1778379402.0866406,
+    1778379702.0866406
+  ],
+  "expected_alert": true
+}
