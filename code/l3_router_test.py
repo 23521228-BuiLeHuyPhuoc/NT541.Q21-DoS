@@ -88,7 +88,10 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             current_pps = self.total_pps
             window_size = len(self.src_ip_window)
 
-            if window_size >= 10:
+            # Can it nhat 100 goi de entropy co y nghia thong ke.
+            # Khi pingall chi tao ~12-20 goi/3s -> entropy thap la binh thuong (it IP),
+            # KHONG PHAI tan cong. Chi tinh entropy khi co du traffic.
+            if window_size >= 100 and current_rate >= 50:
                 ip_counts = Counter(self.src_ip_window)
                 total = len(self.src_ip_window)
 
@@ -134,6 +137,18 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     self.attack_status = 0
 
                 # LUON clear window sau moi chu ky 3s de entropy phan anh traffic HIEN TAI
+                self.src_ip_window.clear()
+                self.src_mac_window.clear()
+                self.proto_window.clear()
+            elif window_size >= 10:
+                # Co traffic nhung chua du de ket luan -> chi tinh entropy, KHONG block
+                ip_counts = Counter(self.src_ip_window)
+                total = len(self.src_ip_window)
+                for count in ip_counts.values():
+                    p = count / total
+                    entropy -= p * math.log2(p)
+                self.last_entropy = entropy
+                self.attack_status = 0  # Khong du traffic de ket luan tan cong
                 self.src_ip_window.clear()
                 self.src_mac_window.clear()
                 self.proto_window.clear()
