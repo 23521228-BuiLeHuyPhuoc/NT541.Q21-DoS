@@ -64,40 +64,35 @@ class L3RouterExtended(SimpleRouterEntropy):
     def handle_alert(self, payload):
         src = payload.get('src_ip')
         if not src: return
-        
-        # Da bi block roi -> bo qua, khong spam log
+
+        # Da bi block roi -> bo qua hoan toan
         if self.blacklist.is_blocked(src):
             return
-        
-        # Grace period: bo qua alert trong 15s dau
+
+        # Grace period
         elapsed = time.time() - self._startup_time
         if elapsed < self._GRACE_PERIOD:
             return
-        
+
         if src in self.WHITELIST_SRC:
             return
-            
-        if time.time() - self.last_violation.get(src, 0) > 30:
-            self.violation_count[src] = 0
-            
-        self.violation_count[src] = self.violation_count.get(src, 0) + 1
-        self.last_violation[src] = time.time()
-        
-        n = self.violation_count[src]
+
         attack = payload.get('attack', 'unknown')
+        action = payload.get('action', 'Logged')  # 'Logged' | 'Rate-Limited' | 'Blocked'
         is_spoof = 'spoof' in attack.lower()
-        
-        if n == 1:
-            self.logger.warning(f"[MITIGATION] Cap 1/3: LOG — ghi nhan {src} ({attack})")
+
+        if action == 'Logged':
+            self.logger.warning(f"[MITIGATION] Cap 1/3: GHI NHAN — {src} ({attack})")
             self._log_alert(src, attack, "INFO", "Logged")
-        elif n == 2:
+
+        elif action == 'Rate-Limited':
             self.logger.warning(f"[MITIGATION] Cap 2/3: RATE-LIMIT — {src} (1000 pps)")
             for dp in self.dps.values():
                 self.ratelimit.apply(dp, src, pps=1000)
             self._log_alert(src, attack, "WARN", "Rate-Limited")
-        else:
+
+        else:  # Blocked
             if is_spoof:
-                # Spoof: block theo MAC vi moi goi co IP khac nhau
                 src_mac = self._find_mac_for_ip(src)
                 if src_mac:
                     self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK MAC — {src_mac} ({attack}, 30s)")
@@ -108,7 +103,7 @@ class L3RouterExtended(SimpleRouterEntropy):
                     for dp in self.dps.values():
                         self.block.apply(dp, src, timeout=30)
             else:
-                self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK — {src} (30s)")
+                self.logger.warning(f"[MITIGATION] Cap 3/3: CHAN IP — {src} ({attack}, 30s)")
                 for dp in self.dps.values():
                     self.block.apply(dp, src, timeout=30)
             self.blacklist.add(src, ttl=30)

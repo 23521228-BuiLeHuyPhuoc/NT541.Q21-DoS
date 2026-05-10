@@ -67,26 +67,20 @@ def alerts_page():
                 if line.strip():
                     try:
                         al = json.loads(line)
-                        # Xac dinh hanh dong (Action) dua tren rule threshold trong policy.yaml
-                        n_rules = al.get("n_rules", 1)
-                        if n_rules >= 3 or al.get("severity") == "CRITICAL":
-                            action = "Blocked"
-                        elif n_rules == 2:
-                            action = "Rate-Limited"
-                        else:
-                            action = "Logged"
+                        # Doc action truc tiep tu log (da duoc alert_system.py ghi chinh xac)
+                        action = al.get("action", "Logged")
+                        severity = al.get("severity", "INFO")
 
                         alerts_data.append({
                             "time": datetime.fromtimestamp(al["timestamp"]).strftime('%H:%M:%S'),
                             "src_ip": al["src_ip"],
                             "attack": al["attack"],
-                            "severity": al["severity"],
+                            "severity": severity,
                             "action": action
                         })
-                    except Exception as e: 
+                    except Exception:
                         pass
-                        
-    # Dao nguoc danh sach de dua canh bao moi nhat len dau bang
+
     return render_template('alerts.html', alerts=alerts_data[::-1])
 
 # ==========================================

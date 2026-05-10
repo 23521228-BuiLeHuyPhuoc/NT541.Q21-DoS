@@ -218,7 +218,7 @@ def main():
                 # --- GUARD: Chi alert khi traffic du lon ---
                 # Pingall: ~16-40 pkts/cycle, attack: 4000+ pkts/cycle
                 total_pkts = features.get("_total_pkts_delta", 0)
-                
+
                 if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
                     global _warmup_logged
                     if not _warmup_logged:
@@ -229,25 +229,32 @@ def main():
                     if not _skip_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts)")
                         _skip_logged = True
-                    # Reset attack tracking khi traffic giam
                     _current_attack = None
                     _attack_count = 0
                 elif n_rules > 0:
                     _skip_logged = False
-                    # Chi in PHAT HIEN lan dau + emit toi da 3 alert (du cho LOG->RATE->BLOCK)
+                    src_ip = features["suspect_src_ip"]
                     if _current_attack != attack_type:
                         _current_attack = attack_type
                         _attack_count = 0
+                        print(f"[{time.strftime('%H:%M:%S')}] *** TAN CONG: {attack_type} | src={src_ip} entropy={features.get('entropy_realtime','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)}")
+
                     _attack_count += 1
-                    if _attack_count <= 3:
-                        print(f"[{time.strftime('%H:%M:%S')}] >>> PHAT HIEN: {attack_type} | entropy={features.get('entropy_src','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)} | {n_rules} rules")
-                        alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
+
+                    if _attack_count == 1:
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 1/3: GHI NHAN - {attack_type} ({src_ip})")
+                        alr.emit(src_ip, attack_type, n_rules, evidence, level=1)
                     elif _attack_count == 4:
-                        print(f"[{time.strftime('%H:%M:%S')}] ... {attack_type} dang tiep tuc (da block, khong gui them alert)")
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 2/3: RATE-LIMIT - {attack_type} ({src_ip})")
+                        alr.emit(src_ip, attack_type, n_rules, evidence, level=2)
+                    elif _attack_count == 7:
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 3/3: CHAN IP - {attack_type} ({src_ip})")
+                        alr.emit(src_ip, attack_type, n_rules, evidence, level=3)
+                    elif _attack_count > 7 and (_attack_count - 7) % 5 == 0:
+                        print(f"[{time.strftime('%H:%M:%S')}] ... {attack_type} tiep tuc ({src_ip} da bi chan)")
                 else:
-                    # Khong co anomaly -> reset tracking
                     if _current_attack is not None:
-                        print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc dot tan cong {_current_attack}")
+                        print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc: {_current_attack}")
                         _current_attack = None
                         _attack_count = 0
             except Exception as e:
@@ -256,4 +263,4 @@ def main():
     except Exception as e: print(f"Error: {e}")
 
 if __name__ == "__main__":
-    main()
+    main()
