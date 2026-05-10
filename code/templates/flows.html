@@ -2,27 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Flows Dashboard</title>
+    <title>Flows - SDN DDoS Detection</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #e9ecef; }
-        pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #fff; color: #000; }
+        h2 { text-align: center; margin-bottom: 10px; }
+        .nav { text-align: center; margin-bottom: 15px; }
+        .nav a { margin: 0 8px; color: #0066cc; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 13px; }
+        th { background: #f4f4f4; }
+        pre { margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h2>Danh sách OpenFlow Rules (Switch {{ dpid }})</h2>
-    <a href="/">← Quay lại Biểu đồ (Home)</a> | <a href="/alerts">Xem Alerts →</a>
-    
+    <h2>OpenFlow Rules (Switch s{{ dpid }})</h2>
+    <div class="nav">
+        <a href="/">Dashboard</a> | <a href="/alerts">Alerts</a> | <a href="/flows">Flows</a>
+    </div>
+
     <table>
-        <tr>
-            <th>Priority</th>
-            <th>Match</th>
-            <th>Actions</th>
-            <th>Byte Count</th>
-            <th>Packet Count</th>
-        </tr>
+        <tr><th>Priority</th><th>Match</th><th>Actions</th><th>Bytes</th><th>Packets</th></tr>
         {% for flow in flows %}
         <tr>
             <td>{{ flow.priority }}</td>
@@ -32,9 +31,7 @@
             <td>{{ flow.packet_count }}</td>
         </tr>
         {% else %}
-        <tr>
-            <td colspan="5" style="text-align: center;">Không lấy được luồng hoặc Switch trống.</td>
-        </tr>
+        <tr><td colspan="5" style="text-align:center;">Khong co flow nao.</td></tr>
         {% endfor %}
     </table>
 </body>
