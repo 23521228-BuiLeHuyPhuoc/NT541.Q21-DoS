@@ -1,30 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDN DDoS Detection Dashboard</title>
+    <title>Bảng tổng quan phát hiện tấn công DoS</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background: #fff; color: #000; }
-        h2 { text-align: center; margin-bottom: 10px; }
-        .nav { text-align: center; margin-bottom: 15px; }
-        .nav a { margin: 0 8px; color: #0066cc; }
-        .stats-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
-        .stat-box { border: 1px solid #ccc; padding: 10px 15px; text-align: center; flex: 1; min-width: 120px; }
-        .stat-box .label { font-size: 12px; color: #666; }
-        .stat-box .value { font-size: 22px; font-weight: bold; }
-        .stat-box.alert { background: #ffe0e0; border-color: #cc0000; }
-        .stat-box.ok { background: #e0ffe0; }
-        .charts { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
-        .charts > div { flex: 1; min-width: 300px; border: 1px solid #ccc; padding: 10px; }
-        .charts h3 { font-size: 14px; margin-bottom: 5px; }
-        .blocked { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
-        .blocked h3 { font-size: 14px; margin-bottom: 5px; }
-        .blocked-item { display: inline-block; background: #ffe0e0; padding: 2px 8px; margin: 2px; font-family: monospace; font-size: 13px; }
-        #debugInfo { font-size: 11px; color: #888; font-family: monospace; padding: 5px; background: #f5f5f5; }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #fff;
+            color: #000;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .nav {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .nav a {
+            margin: 0 8px;
+            color: #0066cc;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            border: 1px solid #ccc;
+            padding: 10px 15px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .stat-box .label {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .stat-box .value {
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .stat-box.alert {
+            background: #ffe0e0;
+            border-color: #cc0000;
+        }
+
+        .stat-box.ok {
+            background: #e0ffe0;
+        }
+
+        .charts {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .charts>div {
+            flex: 1;
+            min-width: 300px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+
+        .charts h3 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .blocked {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .blocked h3 {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .blocked-item {
+            display: inline-block;
+            background: #ffe0e0;
+            padding: 2px 8px;
+            margin: 2px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+
+        #debugInfo {
+            font-size: 11px;
+            color: #888;
+            font-family: monospace;
+            padding: 5px;
+            background: #f5f5f5;
+        }
     </style>
 </head>
+
 <body>
     <h2>SDN DDoS Detection Dashboard</h2>
     <div class="nav">
@@ -32,15 +119,31 @@
     </div>
 
     <div class="stats-row">
-        <div class="stat-box" id="cardEntropy"><div class="label">Entropy</div><div class="value" id="valEntropy">0.0</div></div>
-        <div class="stat-box" id="cardPPS"><div class="label">Packets/sec</div><div class="value" id="valPPS">0</div></div>
-        <div class="stat-box" id="cardIPs"><div class="label">Unique IPs</div><div class="value" id="valIPs">0</div></div>
-        <div class="stat-box ok" id="cardStatus"><div class="label">Trang thai</div><div class="value" id="valStatus">Binh thuong</div></div>
+        <div class="stat-box" id="cardEntropy">
+            <div class="label">Entropy</div>
+            <div class="value" id="valEntropy">0.0</div>
+        </div>
+        <div class="stat-box" id="cardPPS">
+            <div class="label">Packets/sec</div>
+            <div class="value" id="valPPS">0</div>
+        </div>
+        <div class="stat-box" id="cardIPs">
+            <div class="label">Unique IPs</div>
+            <div class="value" id="valIPs">0</div>
+        </div>
+        <div class="stat-box ok" id="cardStatus">
+            <div class="label">Trang thai</div>
+            <div class="value" id="valStatus">Binh thuong</div>
+        </div>
     </div>
 
     <div class="charts">
-        <div><h3>Entropy (Source IP)</h3><canvas id="entropyChart"></canvas></div>
-        <div><h3>PPS (Packets Per Second)</h3><canvas id="ppsChart"></canvas></div>
+        <div>
+            <h3>Entropy (Source IP)</h3><canvas id="entropyChart"></canvas>
+        </div>
+        <div>
+            <h3>PPS (Packets Per Second)</h3><canvas id="ppsChart"></canvas>
+        </div>
     </div>
 
     <div class="blocked">
@@ -78,8 +181,8 @@
                 pChart.options.scales.y.suggestedMax = Math.max(...d.pps_values, 100) * 1.2;
                 pChart.update();
 
-                const e = d.entropy_values[d.entropy_values.length-1] || 0;
-                const p = d.pps_values[d.pps_values.length-1] || 0;
+                const e = d.entropy_values[d.entropy_values.length - 1] || 0;
+                const p = d.pps_values[d.pps_values.length - 1] || 0;
                 document.getElementById('valEntropy').textContent = e.toFixed(2);
                 document.getElementById('valPPS').textContent = Math.round(p);
                 document.getElementById('valIPs').textContent = d.unique_ips;
@@ -92,14 +195,15 @@
                 else { document.getElementById('valStatus').textContent = 'SPOOF'; st.className = 'stat-box alert'; }
 
                 // Blocked
-                const items = [...(d.blocked_ips||[]).map(x=>'IP:'+x), ...(d.blocked_macs||[]).map(x=>'MAC:'+x)];
+                const items = [...(d.blocked_ips || []).map(x => 'IP:' + x), ...(d.blocked_macs || []).map(x => 'MAC:' + x)];
                 document.getElementById('blockedList').innerHTML = items.length > 0
-                    ? items.map(i=>'<span class="blocked-item">'+i+'</span>').join('')
+                    ? items.map(i => '<span class="blocked-item">' + i + '</span>').join('')
                     : '<span style="color:#090">Khong co</span>';
 
                 document.getElementById('debugInfo').textContent = 'Entropy=' + e.toFixed(4) + ' | PPS=' + Math.round(p) + ' | IPs=' + d.unique_ips + ' | ' + d.debug_info;
-            } catch(err) { document.getElementById('debugInfo').textContent = 'Loi: ' + err.message; }
+            } catch (err) { document.getElementById('debugInfo').textContent = 'Loi: ' + err.message; }
         }, 2000);
     </script>
 </body>
+
 </html>
