@@ -6,199 +6,99 @@
     <title>SDN DDoS Detection Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #eee; padding: 15px; }
-        h1 { text-align: center; color: #00d4ff; margin-bottom: 15px; font-size: 1.5em; }
-
-        /* Status bar */
-        .status-bar {
-            display: flex; gap: 12px; margin-bottom: 15px; flex-wrap: wrap;
-        }
-        .status-card {
-            flex: 1; min-width: 150px; padding: 12px 16px;
-            background: #16213e; border-radius: 10px; border-left: 4px solid #00d4ff;
-            text-align: center;
-        }
-        .status-card.danger { border-left-color: #ff4757; background: #2d1525; }
-        .status-card.warning { border-left-color: #ffa502; }
-        .status-card.success { border-left-color: #2ed573; }
-        .status-card .label { font-size: 0.75em; color: #888; text-transform: uppercase; }
-        .status-card .value { font-size: 1.6em; font-weight: bold; margin-top: 2px; }
-
-        /* Charts grid */
-        .charts-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;
-        }
-        .chart-box {
-            background: #16213e; border-radius: 10px; padding: 15px;
-        }
-        .chart-box h3 { color: #00d4ff; margin-bottom: 8px; font-size: 0.95em; }
-
-        /* Blocked list */
-        .blocked-box {
-            background: #16213e; border-radius: 10px; padding: 15px;
-        }
-        .blocked-box h3 { color: #ff4757; margin-bottom: 8px; font-size: 0.95em; }
-        .blocked-list { display: flex; gap: 8px; flex-wrap: wrap; }
-        .blocked-item {
-            background: #2d1525; color: #ff4757; padding: 4px 10px;
-            border-radius: 5px; font-family: monospace; font-size: 0.85em;
-        }
-        .no-block { color: #2ed573; font-size: 0.85em; }
-
-        /* Navigation */
+        body { font-family: Arial, sans-serif; padding: 20px; background: #fff; color: #000; }
+        h2 { text-align: center; margin-bottom: 10px; }
         .nav { text-align: center; margin-bottom: 15px; }
-        .nav a {
-            color: #00d4ff; text-decoration: none; margin: 0 10px;
-            padding: 6px 14px; border: 1px solid #00d4ff; border-radius: 5px;
-            font-size: 0.85em;
-        }
-        .nav a:hover { background: #00d4ff; color: #1a1a2e; }
-        #debugInfo { margin-top: 10px; padding: 8px; background: #0f3460; border-radius: 5px;
-                     font-family: monospace; font-size: 0.75em; color: #aaa; }
-
-        @media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+        .nav a { margin: 0 8px; color: #0066cc; }
+        .stats-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .stat-box { border: 1px solid #ccc; padding: 10px 15px; text-align: center; flex: 1; min-width: 120px; }
+        .stat-box .label { font-size: 12px; color: #666; }
+        .stat-box .value { font-size: 22px; font-weight: bold; }
+        .stat-box.alert { background: #ffe0e0; border-color: #cc0000; }
+        .stat-box.ok { background: #e0ffe0; }
+        .charts { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .charts > div { flex: 1; min-width: 300px; border: 1px solid #ccc; padding: 10px; }
+        .charts h3 { font-size: 14px; margin-bottom: 5px; }
+        .blocked { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+        .blocked h3 { font-size: 14px; margin-bottom: 5px; }
+        .blocked-item { display: inline-block; background: #ffe0e0; padding: 2px 8px; margin: 2px; font-family: monospace; font-size: 13px; }
+        #debugInfo { font-size: 11px; color: #888; font-family: monospace; padding: 5px; background: #f5f5f5; }
     </style>
 </head>
 <body>
-    <h1>&#x1F6E1; SDN DDoS Detection Dashboard</h1>
-
+    <h2>SDN DDoS Detection Dashboard</h2>
     <div class="nav">
-        <a href="/">Dashboard</a>
-        <a href="/alerts">Alerts</a>
-        <a href="/flows">Flows</a>
+        <a href="/">Dashboard</a> | <a href="/alerts">Alerts</a> | <a href="/flows">Flows</a>
     </div>
 
-    <!-- Status Cards -->
-    <div class="status-bar">
-        <div class="status-card" id="cardEntropy">
-            <div class="label">Entropy</div>
-            <div class="value" id="valEntropy">0.0</div>
-        </div>
-        <div class="status-card" id="cardPPS">
-            <div class="label">Packets/sec</div>
-            <div class="value" id="valPPS">0</div>
-        </div>
-        <div class="status-card" id="cardUniqueIPs">
-            <div class="label">Unique IPs</div>
-            <div class="value" id="valUniqueIPs">0</div>
-        </div>
-        <div class="status-card success" id="cardStatus">
-            <div class="label">Trang Thai</div>
-            <div class="value" id="valStatus">Binh thuong</div>
-        </div>
+    <div class="stats-row">
+        <div class="stat-box" id="cardEntropy"><div class="label">Entropy</div><div class="value" id="valEntropy">0.0</div></div>
+        <div class="stat-box" id="cardPPS"><div class="label">Packets/sec</div><div class="value" id="valPPS">0</div></div>
+        <div class="stat-box" id="cardIPs"><div class="label">Unique IPs</div><div class="value" id="valIPs">0</div></div>
+        <div class="stat-box ok" id="cardStatus"><div class="label">Trang thai</div><div class="value" id="valStatus">Binh thuong</div></div>
     </div>
 
-    <!-- Charts -->
-    <div class="charts-grid">
-        <div class="chart-box">
-            <h3>&#x1F4C8; Real-time Entropy (Source IP)</h3>
-            <canvas id="entropyChart"></canvas>
-        </div>
-        <div class="chart-box">
-            <h3>&#x1F4CA; Real-time PPS (Packets Per Second)</h3>
-            <canvas id="ppsChart"></canvas>
-        </div>
+    <div class="charts">
+        <div><h3>Entropy (Source IP)</h3><canvas id="entropyChart"></canvas></div>
+        <div><h3>PPS (Packets Per Second)</h3><canvas id="ppsChart"></canvas></div>
     </div>
 
-    <!-- Blocked -->
-    <div class="blocked-box">
-        <h3>&#x1F6AB; IP/MAC dang bi chan</h3>
-        <div id="blockedList" class="blocked-list">
-            <span class="no-block">Khong co IP/MAC nao bi chan</span>
-        </div>
+    <div class="blocked">
+        <h3>IP/MAC dang bi chan</h3>
+        <div id="blockedList"><span style="color:#090">Khong co</span></div>
     </div>
 
     <div id="debugInfo">Dang cho du lieu...</div>
 
     <script>
-        function createChart(canvasId, label, color, yMax) {
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            return new Chart(ctx, {
+        function makeChart(id, label, color, yMax) {
+            return new Chart(document.getElementById(id).getContext('2d'), {
                 type: 'line',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        label: label,
-                        data: [],
-                        borderColor: color,
-                        backgroundColor: color.replace('1)', '0.15)'),
-                        borderWidth: 2, fill: true, tension: 0.3, pointRadius: 1
-                    }]
-                },
+                data: { labels: [], datasets: [{ label: label, data: [], borderColor: color, borderWidth: 2, fill: false, tension: 0.3, pointRadius: 1 }] },
                 options: {
-                    scales: {
-                        x: { ticks: { color: '#888', maxRotation: 0, maxTicksLimit: 8 }, grid: { color: '#222' } },
-                        y: { suggestedMin: 0, suggestedMax: yMax, ticks: { color: '#888' }, grid: { color: '#222' } }
-                    },
-                    plugins: { legend: { labels: { color: '#ccc' } } },
+                    scales: { y: { suggestedMin: 0, suggestedMax: yMax } },
                     animation: false
                 }
             });
         }
 
-        const entropyChart = createChart('entropyChart', 'Shannon Entropy', 'rgba(255, 99, 132, 1)', 5);
-        const ppsChart = createChart('ppsChart', 'PPS', 'rgba(0, 212, 255, 1)', 100);
-
-        const STATUS_MAP = {
-            0: { text: 'Binh thuong', cls: 'success' },
-            1: { text: 'TAN CONG!', cls: 'danger' },
-            2: { text: 'SPOOF!', cls: 'danger' }
-        };
+        const eChart = makeChart('entropyChart', 'Entropy', 'red', 5);
+        const pChart = makeChart('ppsChart', 'PPS', 'blue', 100);
 
         setInterval(async () => {
             try {
-                const resp = await fetch('/api/stats');
-                const d = await resp.json();
+                const d = (await (await fetch('/api/stats')).json());
 
-                // Update charts
-                entropyChart.data.labels = d.labels;
-                entropyChart.data.datasets[0].data = d.entropy_values;
-                entropyChart.update();
+                eChart.data.labels = d.labels;
+                eChart.data.datasets[0].data = d.entropy_values;
+                eChart.update();
 
-                ppsChart.data.labels = d.labels;
-                ppsChart.data.datasets[0].data = d.pps_values;
-                // Auto-scale PPS y-axis
-                const maxPPS = Math.max(...d.pps_values, 100);
-                ppsChart.options.scales.y.suggestedMax = maxPPS * 1.2;
-                ppsChart.update();
+                pChart.data.labels = d.labels;
+                pChart.data.datasets[0].data = d.pps_values;
+                pChart.options.scales.y.suggestedMax = Math.max(...d.pps_values, 100) * 1.2;
+                pChart.update();
 
-                // Update status cards
-                const latestE = d.entropy_values[d.entropy_values.length - 1] || 0;
-                const latestP = d.pps_values[d.pps_values.length - 1] || 0;
-                document.getElementById('valEntropy').textContent = latestE.toFixed(2);
-                document.getElementById('valPPS').textContent = Math.round(latestP);
-                document.getElementById('valUniqueIPs').textContent = d.unique_ips;
+                const e = d.entropy_values[d.entropy_values.length-1] || 0;
+                const p = d.pps_values[d.pps_values.length-1] || 0;
+                document.getElementById('valEntropy').textContent = e.toFixed(2);
+                document.getElementById('valPPS').textContent = Math.round(p);
+                document.getElementById('valIPs').textContent = d.unique_ips;
 
-                // Attack status
-                const st = STATUS_MAP[d.attack_status] || STATUS_MAP[0];
-                const cardStatus = document.getElementById('cardStatus');
-                document.getElementById('valStatus').textContent = st.text;
-                cardStatus.className = 'status-card ' + st.cls;
+                // Trang thai
+                const atk = d.attack_status;
+                const st = document.getElementById('cardStatus');
+                if (atk == 0) { document.getElementById('valStatus').textContent = 'Binh thuong'; st.className = 'stat-box ok'; }
+                else if (atk == 1) { document.getElementById('valStatus').textContent = 'TAN CONG'; st.className = 'stat-box alert'; }
+                else { document.getElementById('valStatus').textContent = 'SPOOF'; st.className = 'stat-box alert'; }
 
-                // Entropy card color
-                const cardE = document.getElementById('cardEntropy');
-                cardE.className = 'status-card ' + (latestE > 3.5 || latestE < 0.5 ? 'danger' : latestE < 1.0 ? 'warning' : 'success');
+                // Blocked
+                const items = [...(d.blocked_ips||[]).map(x=>'IP:'+x), ...(d.blocked_macs||[]).map(x=>'MAC:'+x)];
+                document.getElementById('blockedList').innerHTML = items.length > 0
+                    ? items.map(i=>'<span class="blocked-item">'+i+'</span>').join('')
+                    : '<span style="color:#090">Khong co</span>';
 
-                // PPS card color
-                const cardP = document.getElementById('cardPPS');
-                cardP.className = 'status-card ' + (latestP > 500 ? 'danger' : latestP > 200 ? 'warning' : '');
-
-                // Blocked list
-                const blockedDiv = document.getElementById('blockedList');
-                const items = [...(d.blocked_ips || []).map(ip => 'IP: ' + ip), ...(d.blocked_macs || []).map(m => 'MAC: ' + m)];
-                if (items.length > 0) {
-                    blockedDiv.innerHTML = items.map(i => '<span class="blocked-item">' + i + '</span>').join('');
-                } else {
-                    blockedDiv.innerHTML = '<span class="no-block">Khong co IP/MAC nao bi chan</span>';
-                }
-
-                document.getElementById('debugInfo').textContent =
-                    'Entropy: ' + latestE.toFixed(4) + ' | PPS: ' + Math.round(latestP) +
-                    ' | IPs: ' + d.unique_ips + ' | ' + d.debug_info;
-            } catch (err) {
-                document.getElementById('debugInfo').textContent = 'LOI: ' + err.message;
-            }
+                document.getElementById('debugInfo').textContent = 'Entropy=' + e.toFixed(4) + ' | PPS=' + Math.round(p) + ' | IPs=' + d.unique_ips + ' | ' + d.debug_info;
+            } catch(err) { document.getElementById('debugInfo').textContent = 'Loi: ' + err.message; }
         }, 2000);
     </script>
 </body>
