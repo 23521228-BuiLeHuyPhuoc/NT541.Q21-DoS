@@ -182,17 +182,19 @@ def main():
                         attack_type = "spoofed_flood"
                 
                 # --- GUARD: Chi emit alert khi traffic du lon ---
-                total_pkts = features.get("_total_pkts_delta", 0)
+                # Dung PPS (tu tong packet_count) thay vi total_src_pkts_delta
+                # vi attacker (non-whitelist) khong co flow voi ipv4_src -> bi an trong per-IP count
+                current_pps = features.get("pps", 0)
                 
                 if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
                     global _warmup_logged
                     if not _warmup_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [WARMUP] Bo qua alert trong {WARMUP_CYCLES} chu ky dau...")
                         _warmup_logged = True
-                elif n_rules > 0 and total_pkts < MIN_PKTS_FOR_ALERT:
+                elif n_rules > 0 and current_pps < MIN_PKTS_FOR_ALERT:
                     global _skip_logged
                     if not _skip_logged:
-                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic qua thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts) -> khong alert")
+                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] PPS qua thap ({int(current_pps)} < {MIN_PKTS_FOR_ALERT}) -> khong alert")
                         _skip_logged = True
                 elif n_rules > 0:
                     _skip_logged = False  # Reset khi co alert that
