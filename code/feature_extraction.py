@@ -20,18 +20,20 @@ except ImportError:
  
 def _get_ip(pkt):
     """Trich IP layer tu packet, ho tro ca Ethernet va SLL (cooked capture)."""
-    # Cach 1: Scapy tu parse duoc IP layer
+    # Cach 1: Scapy tu parse duoc IP layer (Ethernet pcap)
     if pkt.haslayer(IP):
         return pkt[IP]
-    # Cach 2: Thu parse payload truc tiep (cho SLL tren scapy cu)
+    # Cach 2: Parse SLL header thu cong (16 bytes header, protocol o offset 14-15)
     try:
         raw_bytes = bytes(pkt)
-        # Tim IPv4 header (version=4) trong 20 bytes dau
-        for offset in range(min(len(raw_bytes) - 20, 30)):
-            if (raw_bytes[offset] >> 4) == 4:
-                ip = IP(raw_bytes[offset:])
-                if ip.version == 4 and ip.ihl >= 5:
-                    return ip
+        if len(raw_bytes) < 36:  # 16 SLL + 20 IP minimum
+            return None
+        # Kiem tra protocol type = 0x0800 (IPv4) trong SLL header
+        proto = (raw_bytes[14] << 8) | raw_bytes[15]
+        if proto == 0x0800:
+            ip = IP(raw_bytes[16:])
+            if ip.version == 4 and ip.ihl >= 5:
+                return ip
     except Exception:
         pass
     return None

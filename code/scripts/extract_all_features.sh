@@ -8,14 +8,14 @@ for pcap in datasets/*.pcap; do
     name=$(basename "$pcap" .pcap)
     csv="datasets/features/${name}.csv"
     
-    # Chi skip neu CSV da co va co nhieu hon 1 dong (header)
+    # Chi skip neu CSV da co va co nhieu hon 2 dong (header + data)
     if [ -f "$csv" ]; then
         lines=$(wc -l < "$csv")
-        if [ "$lines" -gt 1 ]; then
+        if [ "$lines" -gt 2 ]; then
             echo "[SKIP] $csv da ton tai ($lines dong)"
             continue
         else
-            echo "[REDO] $csv chi co header, chay lai..."
+            echo "[REDO] $csv rong hoac chi co header, chay lai..."
             rm -f "$csv"
         fi
     fi
@@ -25,7 +25,13 @@ for pcap in datasets/*.pcap; do
     python3 code/feature_extraction.py "$pcap" "$csv"
     
     if [ -f "$csv" ]; then
-        echo "  [OK] Da tao $csv ($(wc -l < "$csv") dong)"
+        lines=$(wc -l < "$csv")
+        if [ "$lines" -gt 1 ]; then
+            echo "  [OK] Da tao $csv ($lines dong)"
+        else
+            echo "  [!] $csv chi co header, khong co du lieu"
+            rm -f "$csv"
+        fi
     else
         echo "  [!] THAT BAI: khong tao duoc $csv"
     fi
