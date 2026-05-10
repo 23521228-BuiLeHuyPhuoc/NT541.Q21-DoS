@@ -164,7 +164,7 @@ def main():
         
         while True:
             try:
-                global cycle_count
+                global cycle_count, _current_attack, _attack_count, _warmup_logged, _skip_logged
                 cycle_count += 1
                 
                 resp = requests.get(RYU_FLOW_URL, timeout=2)
@@ -220,12 +220,10 @@ def main():
                 total_pkts = features.get("_total_pkts_delta", 0)
 
                 if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
-                    global _warmup_logged
                     if not _warmup_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [WARMUP] Bo qua alert trong {WARMUP_CYCLES} chu ky dau...")
                         _warmup_logged = True
                 elif n_rules > 0 and total_pkts < MIN_PKTS_FOR_ALERT:
-                    global _skip_logged
                     if not _skip_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts)")
                         _skip_logged = True
