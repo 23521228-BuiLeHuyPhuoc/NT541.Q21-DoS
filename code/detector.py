@@ -245,25 +245,25 @@ def main():
                         _attack_count = 0
                         print(f"[{time.strftime('%H:%M:%S')}] *** TAN CONG: {_current_attack} | src={src_ip} entropy={features.get('entropy_realtime','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)}")
 
-                    _attack_count += 1
-
-                    # 3 cap lien tiep: 1s LOG, 2s RATE-LIMIT, 3s BLOCK
-                    if _attack_count == 1:
+                        # Phat 3 cap lien tiep trong cung 1 lan detect
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 1/3: GHI NHAN - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=1)
-                    elif _attack_count == 2:
+                        time.sleep(1)
+
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 2/3: RATE-LIMIT - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=2)
-                    elif _attack_count == 3:
+                        time.sleep(1)
+
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 3/3: CHAN IP - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=3)
-                    elif _attack_count == 4:
-                        print(f"[{time.strftime('%H:%M:%S')}] ... {_current_attack} da bi chan. Cho het timeout (30s)...")
+
+                        print(f"[{time.strftime('%H:%M:%S')}] Da chan {src_ip}. Tu dong go chan sau 30s.")
+
+                    _attack_count += 1
                 else:
-                    # Khong co anomaly — chi reset sau 3 cycle lien tiep khong attack
                     if _current_attack is not None:
-                        _attack_count += 1  # dung lai bien nay de dem so cycle khong attack
-                        if _attack_count > 10:  # 10 cycle (~10s) khong attack moi reset
+                        _attack_count += 1
+                        if _attack_count > 10:
                             print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc: {_current_attack}")
                             _current_attack = None
                             _attack_count = 0
