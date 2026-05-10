@@ -61,24 +61,13 @@ def is_flash_crowd(rows, mu, sig):
     """File-level flash-crowd guard: avg entropy cao + avg PPS khong cuc cao."""
     if not rows:
         return False
-    avg_ent = sum(float(r.get('entropy_src_ip', 0)) for r in rows) / len(rows)
     avg_pps = sum(float(r.get('pps', 0)) for r in rows) / len(rows)
-    avg_syn = sum(float(r.get('syn_pct', 0)) for r in rows) / len(rows)
-
-    ent_mu = mu.get('entropy_src', 3.5)
-    ent_sig = max(sig.get('entropy_src', 0.5), 0.01)
     pps_mu = mu.get('pps', 50)
-    pps_sig = max(sig.get('pps', 10), 0.01)
 
-    # Flash crowd dieu kien:
-    # 1) Entropy KHAC baseline nhieu (traffic pattern khac binh thuong)
-    # 2) PPS khong cuc cao (khong phai volumetric DDoS)
-    # 3) Khong bi dominate boi 1 protocol (syn_pct < 0.9)
-    ent_diff = abs(avg_ent - ent_mu) > 1.5 * ent_sig
-    pps_moderate = avg_pps < pps_mu + 6 * pps_sig
-    proto_diverse = avg_syn < 0.9
-
-    return ent_diff and pps_moderate and proto_diverse
+    # Flash-crowd / benign guard:
+    # Neu avg PPS <= baseline, traffic KHONG tang -> khong the la DDoS
+    # DDoS luon co PPS cao hon binh thuong
+    return avg_pps <= pps_mu
 
 
 def evaluate(k_sigma, h_factor, mu, sig, alert_threshold=0.05):
