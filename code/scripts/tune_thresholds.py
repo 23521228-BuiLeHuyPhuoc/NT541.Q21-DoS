@@ -65,8 +65,9 @@ def detect_row(row, mu, sig, k_sigma, h_factor):
     # --- Protocol anomaly (SYN flood / ICMP flood) ---
     proto_alert = syn_pct > 0.7 or icmp_pct > 0.7
 
-    # Ket hop: entropy HOAC rate HOAC protocol bat thuong
-    return entropy_alert or rate_alert or proto_alert
+    # Ket hop: (entropy VA rate bat thuong) HOAC protocol ro rang
+    # Theo task: alert = entropy_anomaly AND rate_anomaly, khong chi entropy don le
+    return (entropy_alert and rate_alert) or proto_alert
 
 
 def evaluate(k_sigma, h_factor, mu, sig):
