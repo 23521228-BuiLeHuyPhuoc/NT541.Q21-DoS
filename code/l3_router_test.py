@@ -408,8 +408,13 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.logger.warning(
             "[SPOOF] >> BLOCK MAC %s trong 20s", top_mac)
 
-        # Block MAC tren switch s2
-        self._block_mac(top_mac)
+        # Block MAC tren switch s2 (truc tiep, tranh conflict voi override cua L3RouterExtended)
+        parser = dp.ofproto_parser
+        match = parser.OFPMatch(eth_src=top_mac)
+        mod = parser.OFPFlowMod(datapath=dp, priority=100,
+                                match=match, instructions=[],
+                                hard_timeout=20)
+        dp.send_msg(mod)
         self.blocked_macs.add(top_mac)
 
         # Ghi alert vao file cho dashboard
