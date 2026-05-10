@@ -146,6 +146,11 @@ def main():
         sig_matcher = SignatureMatcher(csv_path=os.path.join(_BASE_DIR, '..', 'docs', 'attack_signatures.csv'))
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
 
+        # Xoa alerts cu de dashboard luon hien du lieu moi
+        alerts_path = os.path.join(_BASE_DIR, '..', 'results', 'raw', 'alerts.json')
+        if os.path.exists(alerts_path):
+            open(alerts_path, 'w').close()  # Xoa noi dung
+
         # Doi Ryu san sang truoc khi bat dau vong lap chinh
         print(f"[{time.strftime('%H:%M:%S')}] [DETECTOR] Dang cho Ryu va Mininet khoi dong...")
         while True:
@@ -232,22 +237,25 @@ def main():
                 elif n_rules > 0:
                     _skip_logged = False
                     src_ip = features["suspect_src_ip"]
-                    if _current_attack != attack_type:
+
+                    # Lan dau phat hien: ghi nhan attack_type
+                    # Sau do GIU NGUYEN type — khong doi khi flow stats thay doi do rate-limit/block
+                    if _current_attack is None:
                         _current_attack = attack_type
                         _attack_count = 0
-                        print(f"[{time.strftime('%H:%M:%S')}] *** TAN CONG: {attack_type} | src={src_ip} entropy={features.get('entropy_realtime','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)}")
+                        print(f"[{time.strftime('%H:%M:%S')}] *** TAN CONG: {_current_attack} | src={src_ip} entropy={features.get('entropy_realtime','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)}")
 
                     _attack_count += 1
 
                     if _attack_count == 1:
-                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 1/3: GHI NHAN - {attack_type} ({src_ip})")
-                        alr.emit(src_ip, attack_type, n_rules, evidence, level=1)
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 1/3: GHI NHAN - {_current_attack} ({src_ip})")
+                        alr.emit(src_ip, _current_attack, n_rules, evidence, level=1)
                     elif _attack_count == 4:
-                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 2/3: RATE-LIMIT - {attack_type} ({src_ip})")
-                        alr.emit(src_ip, attack_type, n_rules, evidence, level=2)
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 2/3: RATE-LIMIT - {_current_attack} ({src_ip})")
+                        alr.emit(src_ip, _current_attack, n_rules, evidence, level=2)
                     elif _attack_count == 7:
-                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 3/3: CHAN IP - {attack_type} ({src_ip})")
-                        alr.emit(src_ip, attack_type, n_rules, evidence, level=3)
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 3/3: CHAN IP - {_current_attack} ({src_ip})")
+                        alr.emit(src_ip, _current_attack, n_rules, evidence, level=3)
                     elif _attack_count > 7 and (_attack_count - 7) % 5 == 0:
                         print(f"[{time.strftime('%H:%M:%S')}] ... {attack_type} tiep tuc ({src_ip} da bi chan)")
                 else:

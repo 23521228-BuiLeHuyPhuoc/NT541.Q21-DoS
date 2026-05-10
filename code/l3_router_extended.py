@@ -78,18 +78,16 @@ class L3RouterExtended(SimpleRouterEntropy):
             return
 
         attack = payload.get('attack', 'unknown')
-        action = payload.get('action', 'Logged')  # 'Logged' | 'Rate-Limited' | 'Blocked'
+        action = payload.get('action', 'Logged')
         is_spoof = 'spoof' in attack.lower()
 
         if action == 'Logged':
             self.logger.warning(f"[MITIGATION] Cap 1/3: GHI NHAN — {src} ({attack})")
-            self._log_alert(src, attack, "INFO", "Logged")
 
         elif action == 'Rate-Limited':
             self.logger.warning(f"[MITIGATION] Cap 2/3: RATE-LIMIT — {src} (1000 pps)")
             for dp in self.dps.values():
                 self.ratelimit.apply(dp, src, pps=1000)
-            self._log_alert(src, attack, "WARN", "Rate-Limited")
 
         else:  # Blocked
             if is_spoof:
@@ -107,7 +105,6 @@ class L3RouterExtended(SimpleRouterEntropy):
                 for dp in self.dps.values():
                     self.block.apply(dp, src, timeout=30)
             self.blacklist.add(src, ttl=30)
-            self._log_alert(src, attack, "CRITICAL", "Blocked")
 
     def _find_mac_for_ip(self, ip):
         """Tim MAC address tuong ung voi IP tu ARP table."""
