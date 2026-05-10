@@ -1,94 +1,186 @@
+"""
+Grid search nguong cho EntropyDetector + StatsDetector.
+Danh gia ROW-LEVEL (tung dong CSV) thay vi file-level de co do phan giai cao hon.
+Tich hop Flash-Crowd Guard cho s08.
+"""
 import csv, json, glob, os, yaml
 
-def evaluate(k_sigma, h_factor):
-    # Load baseline
-    try:
-        b = json.load(open('datasets/baseline_stats.json'))
-        mu = {k: v["mean"] for k,v in b.items()}
-        sig = {k: v["std"] for k,v in b.items()}
-    except Exception:
-        print("Loi: Khong tim thay datasets/baseline_stats.json")
-        return 0, 0, 0
+# === GROUND TRUTH ===
+# Attack scenarios: moi ROW trong cac file nay la attack traffic
+ATTACK_FILES = ['s01_syn', 's02_udp', 's03_icmp', 's04_http',
+                's05_dns_ampl', 's06_ip_spoof', 's07_slowloris']
+# Normal scenarios: moi ROW trong cac file nay la normal traffic
+NORMAL_FILES = ['baseline', 's08_flash_crowd']
 
+
+def load_baseline():
+    for path in ['datasets/baseline_stats.json', 'tests/fixtures/baseline.json']:
+        if os.path.exists(path):
+            b = json.load(open(path))
+            mu = {k: v["mean"] for k, v in b.items()}
+            sig = {k: v["std"]  for k, v in b.items()}
+            print(f"[*] Loaded baseline tu {path}")
+            print(f"    Keys: {list(mu.keys())}")
+            print(f"    pps: mu={mu.get('pps',0):.1f}, sig={sig.get('pps',0):.1f}")
+            print(f"    entropy_src: mu={mu.get('entropy_src',0):.3f}, sig={sig.get('entropy_src',0):.3f}")
+            return mu, sig
+    print("[ERROR] Khong tim thay baseline_stats.json!")
+    return None, None
+
+
+def classify_file(filename):
+    """Xac dinh file la attack hay normal."""
+    base = os.path.basename(filename).replace('.csv', '')
+    for s in ATTACK_FILES:
+        if s in base:
+            return 'attack'
+    for s in NORMAL_FILES:
+        if s in base:
+            return 'normal'
+    return None
+
+
+def detect_row(row, mu, sig, k_sigma, h_factor):
+    """Mo phong detection pipeline cho 1 row CSV. Tra ve True neu alert."""
+    ent = float(row.get('entropy_src_ip', 0))
+    pps = float(row.get('pps', 0))
+    syn_pct = float(row.get('syn_pct', 0))
+    icmp_pct = float(row.get('icmp_pct', 0))
+
+    # --- Flash-Crowd Guard ---
+    # Entropy cao (nhieu IP da dang) + PPS khong qua cao = traffic hop le
+    pps_mu = mu.get('pps', 50)
+    pps_sig = sig.get('pps', 10)
+    if ent > 4.0 and pps < pps_mu + h_factor * pps_sig:
+        return False  # Flash crowd, khong phai attack
+
+    # --- Entropy anomaly ---
+    ent_mu = mu.get('entropy_src', 3.5)
+    ent_sig = max(sig.get('entropy_src', 0.5), 0.01)
+    entropy_alert = abs(ent - ent_mu) > k_sigma * ent_sig
+
+    # --- Rate anomaly (PPS) ---
+    rate_alert = pps > pps_mu + h_factor * pps_sig
+
+    # --- Protocol anomaly (SYN flood / ICMP flood) ---
+    proto_alert = syn_pct > 0.7 or icmp_pct > 0.7
+
+    # Ket hop: entropy HOAC rate HOAC protocol bat thuong
+    return entropy_alert or rate_alert or proto_alert
+
+
+def evaluate(k_sigma, h_factor, mu, sig):
+    """Danh gia ROW-LEVEL tren tat ca CSV files."""
     files = glob.glob('datasets/features/*.csv')
     TP = FP = TN = FN = 0
+    skipped = []
 
-    for file in files:
-        # baseline va s08 (flash crowd) duoc coi la mang binh thuong (khong duoc bao dong)
-        is_attack = not ('s08' in file or 'baseline' in file)
-        
-        with open(file, 'r') as f:
-            reader = csv.DictReader(f)
-            alerts_in_file = 0
-            total_rows = 0
-            
-            for row in reader:
-                total_rows += 1
-                alert = False
-                
-                # Mo phong Entropy Detector
-                ent = float(row.get('entropy_src_ip', 0))
-                if abs(ent - mu.get('entropy_src', 0)) > k_sigma * sig.get('entropy_src', 1):
-                    alert = True
-                
-                # Mo phong Stats Detector (Z-score don gian cho PPS)
-                pps = float(row.get('pps', 0))
-                if abs(pps - mu.get('pps', 0)) > h_factor * sig.get('pps', 1):
-                    alert = True
+    for filepath in files:
+        label = classify_file(filepath)
+        if label is None:
+            continue
 
+        with open(filepath, 'r') as f:
+            rows = list(csv.DictReader(f))
+
+        if not rows:
+            skipped.append(os.path.basename(filepath))
+            continue
+
+        for row in rows:
+            alert = detect_row(row, mu, sig, k_sigma, h_factor)
+
+            if label == 'attack':
                 if alert:
-                    alerts_in_file += 1
-
-            # Danh gia file nay
-            if is_attack:
-                if alerts_in_file > (total_rows * 0.1): # Canh bao > 10% so dong la bat duoc
                     TP += 1
                 else:
                     FN += 1
-            else:
-                if alerts_in_file > (total_rows * 0.1): # Canh bao > 10% o mang binh thuong la bao gia
+            else:  # normal
+                if alert:
                     FP += 1
                 else:
                     TN += 1
 
     TPR = TP / (TP + FN) if (TP + FN) > 0 else 0
     FPR = FP / (FP + TN) if (FP + TN) > 0 else 0
-    
-    # Tinh F1 Score
     precision = TP / (TP + FP) if (TP + FP) > 0 else 0
     F1 = 2 * (precision * TPR) / (precision + TPR) if (precision + TPR) > 0 else 0
-    
-    return TPR, FPR, F1
+
+    return TPR, FPR, F1, skipped
+
 
 def main():
-    k_values =[1.0, 1.5, 2.0, 2.5, 3.0]
+    mu, sig = load_baseline()
+    if mu is None:
+        return
+
+    k_values = [1.0, 1.5, 2.0, 2.5, 3.0]
     h_values = [3, 4, 5, 6]
-    
+
     best_f1 = -1
     best_params = {}
     best_metrics = {}
+    first_skipped = None
 
-    print(f"{'k_sigma':<10} | {'h_factor':<10} | {'TPR':<10} | {'FPR':<10} | {'F1_Score':<10}")
+    print(f"\n{'k_sigma':<10} | {'h_factor':<10} | {'TPR':<10} | {'FPR':<10} | {'F1_Score':<10}")
     print("-" * 60)
 
     for k in k_values:
         for h in h_values:
-            tpr, fpr, f1 = evaluate(k, h)
+            tpr, fpr, f1, skipped = evaluate(k, h, mu, sig)
+            if first_skipped is None and skipped:
+                first_skipped = skipped
             print(f"{k:<10} | {h:<10} | {tpr:<10.2f} | {fpr:<10.2f} | {f1:<10.2f}")
-            
-            if f1 > best_f1:
+
+            if f1 > best_f1 or (f1 == best_f1 and fpr < best_metrics.get('FPR', 1)):
                 best_f1 = f1
                 best_params = {'k_sigma': k, 'h_factor': h}
                 best_metrics = {'TPR': tpr, 'FPR': fpr, 'F1': f1}
 
     print("-" * 60)
-    print(f"[+] BEST PARAMS: {best_params} (F1: {best_metrics['F1']:.2f}, TPR: {best_metrics['TPR']:.2f}, FPR: {best_metrics['FPR']:.2f})")
+    if first_skipped:
+        print(f"[!] Bo qua file rong: {', '.join(first_skipped)}")
+    print(f"[+] BEST: k_sigma={best_params['k_sigma']}, h_factor={best_params['h_factor']}")
+    print(f"    TPR={best_metrics['TPR']:.2f}, FPR={best_metrics['FPR']:.2f}, F1={best_metrics['F1']:.2f}")
 
-    # Luu cau hinh tot nhat vao yaml
+    # Kiem tra target
+    if best_metrics['TPR'] >= 0.92:
+        print("[OK] TPR >= 92% -- DAT")
+    else:
+        print(f"[!] TPR = {best_metrics['TPR']*100:.0f}% < 92% -- CHUA DAT")
+    if best_metrics['FPR'] <= 0.05:
+        print("[OK] FPR <= 5% -- DAT")
+    else:
+        print(f"[!] FPR = {best_metrics['FPR']*100:.0f}% > 5% -- CHUA DAT")
+
+    # Chi tiet per-file voi best params
+    print("\n=== CHI TIET TUNG FILE (best params) ===")
+    files = sorted(glob.glob('datasets/features/*.csv'))
+    for filepath in files:
+        label = classify_file(filepath)
+        if label is None:
+            continue
+        with open(filepath, 'r') as f:
+            rows = list(csv.DictReader(f))
+        if not rows:
+            print(f"  {os.path.basename(filepath):30s} | {label:7s} | RONG (0 rows)")
+            continue
+        alerts = sum(1 for r in rows if detect_row(r, mu, sig,
+                     best_params['k_sigma'], best_params['h_factor']))
+        pct = alerts / len(rows) * 100
+        status = "ALERT" if alerts > 0 else "OK"
+        if label == 'normal' and alerts > 0:
+            status = "FALSE POSITIVE!"
+        if label == 'attack' and alerts == 0:
+            status = "MISSED!"
+        print(f"  {os.path.basename(filepath):30s} | {label:7s} | {alerts:4d}/{len(rows):4d} rows ({pct:5.1f}%) {status}")
+
+    # Luu cau hinh
     os.makedirs('code', exist_ok=True)
     with open('code/thresholds.yaml', 'w') as f:
         yaml.dump(best_params, f)
-    print("[+] Da luu cau hinh toi uu vao code/thresholds.yaml")
+    print(f"\n[+] Da luu cau hinh toi uu vao code/thresholds.yaml")
+
 
 if __name__ == '__main__':
     main()
