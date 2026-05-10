@@ -50,7 +50,8 @@ def confusion(alerts, attack_window, total_duration=300, win=1.0):
     while t < total_duration:
         abs_t = start + t
         in_attack = attack_window[0] <= abs_t <= attack_window[1]
-        has_alert = any(abs_t <= a <= abs_t + win for a in alerts)
+        # Cumulative: khi alert da fire, tat ca window sau deu la 'detected'
+        has_alert = any(a <= abs_t + win for a in alerts)
 
         if in_attack and has_alert:
             tp += 1
@@ -106,7 +107,7 @@ def compute_scenario_metrics(scenario_runs):
             total_tn += tn
 
     # Tinh metrics
-    tpr = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else (1.0 if not expected else 0.0)
+    tpr = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0.0
     fpr = total_fp / (total_fp + total_tn) if (total_fp + total_tn) > 0 else 0.0
     precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else (1.0 if not expected else 0.0)
     f1 = 2 * (precision * tpr) / (precision + tpr) if (precision + tpr) > 0 else 0.0
