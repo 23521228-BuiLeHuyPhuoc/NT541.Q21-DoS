@@ -4,6 +4,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 entropy_history = []
+pps_history = []
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -33,23 +34,48 @@ def home():
 
 @app.route('/api/stats')
 def stats(): 
-    global entropy_history
+    global entropy_history, pps_history
     
-    current_entropy, debug_info = _compute_entropy_from_ryu()
+    # Lay du lieu tu Ryu controller
+    current_entropy = 0.0
+    current_pps = 0
+    attack_status = 0
+    blocked_ips = []
+    blocked_macs = []
+    unique_ips = 0
+    spoof_detected = False
+    debug_info = ""
+
+    try:
+        resp = requests.get(RYU_ENTROPY_URL, timeout=2)
+        data = resp.json()
+        current_entropy = round(data.get("entropy", 0.0), 4)
+        current_pps = data.get("packet_rate", 0)
+        attack_status = data.get("attack_status", 0)
+        blocked_ips = data.get("blocked_ips", [])
+        blocked_macs = data.get("blocked_macs", [])
+        unique_ips = data.get("unique_ips", 0)
+        spoof_detected = data.get("spoof_detected", False)
+        debug_info = f"{unique_ips} IPs, attack={attack_status}"
+    except Exception as e:
+        debug_info = f"Ryu error: {e}"
 
     now_str = datetime.now().strftime('%H:%M:%S')
     entropy_history.append({"label": now_str, "value": current_entropy})
+    pps_history.append({"label": now_str, "value": current_pps})
     
-    # Giu lai 30 diem gan nhat cho muot
-    if len(entropy_history) > 30: 
-        entropy_history.pop(0)
+    if len(entropy_history) > 30: entropy_history.pop(0)
+    if len(pps_history) > 30: pps_history.pop(0)
     
-    labels = [p["label"] for p in entropy_history]
-    values = [p["value"] for p in entropy_history]
-        
     return jsonify({
-        "labels": labels, 
-        "values": values,
+        "labels": [p["label"] for p in entropy_history],
+        "entropy_values": [p["value"] for p in entropy_history],
+        "pps_values": [p["value"] for p in pps_history],
+        "attack_status": attack_status,
+        "blocked_ips": blocked_ips,
+        "blocked_macs": blocked_macs,
+        "unique_ips": unique_ips,
+        "spoof_detected": spoof_detected,
         "debug_info": debug_info
     })
 
