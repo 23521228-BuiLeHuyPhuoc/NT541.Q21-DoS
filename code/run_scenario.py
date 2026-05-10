@@ -98,6 +98,35 @@ def wait_for_flowmod(t0, src_ip, timeout=30):
         time.sleep(0.5)
     return None
 
+def run_feature_extraction(scenario_id):
+    """Tu dong chay feature_extraction.py neu co file pcap."""
+    pcap_path = f"datasets/{scenario_id}.pcap"
+    csv_path = f"datasets/features/{scenario_id}.csv"
+    
+    if not os.path.exists(pcap_path):
+        print(f"  [!] Khong tim thay {pcap_path}, bo qua feature extraction.")
+        return
+    
+    pcap_size = os.path.getsize(pcap_path)
+    if pcap_size < 100:
+        print(f"  [!] {pcap_path} qua nho ({pcap_size} bytes), bo qua.")
+        return
+    
+    print(f"[*] Dang trich xuat features: {pcap_path} -> {csv_path}")
+    try:
+        result = subprocess.run(
+            ["python3", "code/feature_extraction.py", pcap_path, csv_path],
+            timeout=120, capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            print(f"  [OK] Da tao {csv_path}")
+        else:
+            print(f"  [!] Feature extraction loi: {result.stderr[-200:] if result.stderr else 'unknown'}")
+    except subprocess.TimeoutExpired:
+        print(f"  [!] Feature extraction timeout (120s)")
+    except Exception as e:
+        print(f"  [!] Feature extraction exception: {e}")
+
 def run(scenario_id):
     os.makedirs("results/raw", exist_ok=True)
     
@@ -125,6 +154,20 @@ def run(scenario_id):
     ryu, ryu_out = start_ryu()
     mn = start_topology()
     det, det_out = start_detector()
+    
+    # Bat tcpdump tren host system de capture pcap (khong phu thuoc attack script)
+    pcap_path = f"datasets/{scenario_id}.pcap"
+    os.makedirs("datasets", exist_ok=True)
+    tcpdump_proc = None
+    try:
+        tcpdump_proc = subprocess.Popen(
+            ["sudo", "tcpdump", "-i", "any", "-w", pcap_path, "-U"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+        print(f"[*] Bat dau capture pcap: {pcap_path}")
+    except Exception as e:
+        print(f"  [!] Khong khoi dong duoc tcpdump: {e}")
     
     # Cho detector warm up (can vai chu ky doc flow stats)
     print("[*] Cho detector warm up 5s...")
@@ -204,6 +247,19 @@ def run(scenario_id):
         except: 
             mn.kill()
         subprocess.run(["sudo", "mn", "-c"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # Dung tcpdump va flush pcap
+        if tcpdump_proc:
+            try:
+                os.killpg(os.getpgid(tcpdump_proc.pid), signal.SIGTERM)
+            except (ProcessLookupError, PermissionError, OSError):
+                try: tcpdump_proc.terminate()
+                except: pass
+            tcpdump_proc.wait(timeout=5)
+            print(f"  [OK] Da luu pcap: {pcap_path}")
+        
+        # Tu dong trich xuat features tu pcap sang CSV
+        run_feature_extraction(scenario_id)
 
 if __name__ == "__main__": 
     if len(sys.argv) > 1:
