@@ -46,6 +46,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self._pktin_count = 0
         self._pktin_unique_ips = set()
         self._pktin_mac_counter = Counter()
+        self._pktin_proto_counter = Counter()  # Dem protocol (tcp/udp/icmp)
+        self._pktin_dport_counter = Counter()  # Dem destination port
         self._SPOOF_WINDOW = 2             # Kiem tra moi 2 giay
         self._SPOOF_PKT_THRESHOLD = 100    # > 100 packet_in trong 1 window
         self._SPOOF_IP_THRESHOLD = 20      # > 20 IP duy nhat
@@ -290,6 +292,14 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 self._pktin_count += 1
                 self._pktin_unique_ips.add(p_ip.src)
                 self._pktin_mac_counter[p_eth.src] += 1
+                # Theo doi protocol va port de phan loai attack
+                self._pktin_proto_counter[p_ip.proto] += 1  # 6=TCP, 17=UDP, 1=ICMP
+                p_tcp_spoof = pkt.get_protocol(tcp.tcp)
+                p_udp_spoof = pkt.get_protocol(udp.udp)
+                if p_tcp_spoof:
+                    self._pktin_dport_counter[p_tcp_spoof.dst_port] += 1
+                elif p_udp_spoof:
+                    self._pktin_dport_counter[p_udp_spoof.dst_port] += 1
 
                 if now_pkt - self._pktin_window_start >= self._SPOOF_WINDOW:
                     self._check_spoof_flood(dp, p_ip.dst)
@@ -298,6 +308,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     self._pktin_count = 0
                     self._pktin_unique_ips.clear()
                     self._pktin_mac_counter.clear()
+                    self._pktin_proto_counter.clear()
+                    self._pktin_dport_counter.clear()
 
             # Ghi TAT CA IP vao window (ke ca whitelist) de pingall tao entropy cao
             # Chi loai gateway IP (khong phai traffic thuc)
@@ -393,21 +405,41 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.attack_status = 2
         self._spoof_victim_ip = victim_ip
 
+        # Phan loai attack type dua tren protocol va port
+        top_proto = self._pktin_proto_counter.most_common(1)
+        top_dport = self._pktin_dport_counter.most_common(1)
+        dominant_proto = top_proto[0][0] if top_proto else 6  # Default TCP
+        dominant_port = top_dport[0][0] if top_dport else 80
+
+        if dominant_proto == 17 and dominant_port == 53:
+            attack_name = "s05_dns_ampl"
+            attack_label = "DNS AMPLIFICATION"
+        elif dominant_proto == 17:
+            attack_name = "s02_udp_flood"
+            attack_label = "UDP FLOOD (spoofed)"
+        elif dominant_proto == 1:
+            attack_name = "s03_icmp_flood"
+            attack_label = "ICMP FLOOD (spoofed)"
+        else:
+            attack_name = "s06_ip_spoof"
+            attack_label = "IP SPOOF FLOOD"
+
         if top_mac in self._spoof_blocked_macs:
             return  # Da block roi
 
         self._spoof_blocked_macs.add(top_mac)
         self.logger.warning(
-            "[SPOOF] === PHAT HIEN IP SPOOF FLOOD ===")
+            "[DETECT] === PHAT HIEN %s ===", attack_label)
         self.logger.warning(
-            "[SPOOF] %d unique IPs, %d pkts trong %ds, entropy=%.2f",
+            "[DETECT] %d unique IPs, %d pkts trong %ds, entropy=%.2f",
             len(self._pktin_unique_ips), self._pktin_count,
             self._SPOOF_WINDOW, spoof_entropy)
         self.logger.warning(
-            "[SPOOF] Attacker MAC: %s (%d pkts), Victim: %s",
-            top_mac, top_count, victim_ip)
+            "[DETECT] Proto=%s, Port=%s, Attacker MAC: %s, Victim: %s",
+            {6:'TCP',17:'UDP',1:'ICMP'}.get(dominant_proto, str(dominant_proto)),
+            dominant_port, top_mac, victim_ip)
         self.logger.warning(
-            "[SPOOF] >> BLOCK MAC %s trong 20s", top_mac)
+            "[DETECT] >> BLOCK MAC %s trong 20s", top_mac)
 
         # Block MAC tren switch s2 (truc tiep, tranh conflict voi override cua L3RouterExtended)
         parser = dp.ofproto_parser
@@ -419,7 +451,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.blocked_macs.add(top_mac)
 
         # Ghi alert vao file cho dashboard
-        self._write_spoof_alert(top_mac, victim_ip, spoof_entropy)
+        self._write_spoof_alert(top_mac, victim_ip, spoof_entropy, attack_name)
 
         # Tu dong go block sau 20s
         def _unblock_spoof():
@@ -431,8 +463,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             self.logger.info("[SPOOF] Da go block MAC %s sau 20s", top_mac)
         hub.spawn(_unblock_spoof)
 
-    def _write_spoof_alert(self, mac, victim_ip, entropy):
-        """Ghi 3 cap alert (Log, Rate-Limit, Block) cho spoof vao alerts.json."""
+    def _write_spoof_alert(self, mac, victim_ip, entropy, attack_name='s06_ip_spoof'):
+        """Ghi 3 cap alert (Log, Rate-Limit, Block) vao alerts.json."""
         alerts_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                    '..', 'results', 'raw', 'alerts.json')
         os.makedirs(os.path.dirname(alerts_file), exist_ok=True)
@@ -457,7 +489,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 alert = {
                     "timestamp": now,
                     "src_ip": src_ip,
-                    "attack": "s06_ip_spoof",
+                    "attack": attack_name,
                     "severity": lvl["severity"],
                     "n_rules": lvl["n_rules"],
                     "action": lvl["action"],
@@ -473,7 +505,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 f.write(json.dumps(alert) + "\n")
                 now += 1  # Tang timestamp 1s cho moi cap
 
-        self.logger.warning("[SPOOF] Da ghi 3 cap alert vao alerts.json")
+        self.logger.warning("[DETECT] Da ghi 3 cap alert (%s) vao alerts.json", attack_name)
 
         # Gui alert toi Ryu REST API (cho l3_router_extended xu ly)
         try:
@@ -481,7 +513,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             for lvl in levels:
                 requests.post('http://127.0.0.1:8081/api/alert', json={
                     "src_ip": src_ip,
-                    "attack": "s06_ip_spoof",
+                    "attack": attack_name,
                     "severity": lvl["severity"],
                     "action": lvl["action"],
                     "mac": mac
