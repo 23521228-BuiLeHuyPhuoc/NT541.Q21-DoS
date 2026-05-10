@@ -64,4 +64,4 @@ class BlacklistManager:
                 del self.entries[ip]
                 if self.app and hasattr(self.app, 'logger'):
                     self.app.logger.info(f"[blacklist] auto-release {ip}")
-            time.sleep(5)
+            time.sleep(3)

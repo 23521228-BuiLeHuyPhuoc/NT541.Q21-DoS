@@ -40,19 +40,18 @@ class L3RouterExtended(SimpleRouterEntropy):
         self.ratelimit = RateLimitModule(self)
         self.blacklist = BlacklistManager(self)
         self._startup_time = time.time()
-        self._GRACE_PERIOD = 30
-        self._grace_logged = False  # Chi in [GRACE] 1 lan
+        self._GRACE_PERIOD = 15
+        self._grace_logged = False
 
-        self.logger.info("[RYU] Controller san sang tren port 8081")
+        self.logger.info("[RYU] Controller san sang. Cho %ds de flow table on dinh...", self._GRACE_PERIOD)
 
-        # Sau 30s, in thong bao he thong san sang
         from ryu.lib import hub
         hub.spawn(self._notify_grace_end)
 
     def _notify_grace_end(self):
         from ryu.lib import hub
         hub.sleep(self._GRACE_PERIOD)
-        self.logger.info("[RYU] Grace period ket thuc. San sang phat hien tan cong.")
+        self.logger.info("[RYU] He thong san sang phat hien tan cong.")
 
     def _load_whitelist(self, path):
         try:
@@ -66,12 +65,13 @@ class L3RouterExtended(SimpleRouterEntropy):
         src = payload.get('src_ip')
         if not src: return
         
-        # Grace period: bo qua alert trong 30s dau
+        # Da bi block roi -> bo qua, khong spam log
+        if self.blacklist.is_blocked(src):
+            return
+        
+        # Grace period: bo qua alert trong 15s dau
         elapsed = time.time() - self._startup_time
         if elapsed < self._GRACE_PERIOD:
-            if not self._grace_logged:
-                self.logger.info(f"[GRACE] Bo qua alert trong {int(self._GRACE_PERIOD)}s dau sau khoi dong...")
-                self._grace_logged = True
             return
         
         if src in self.WHITELIST_SRC:
@@ -148,16 +148,20 @@ class AlertAPI(ControllerBase):
         try:
             with open(features_path) as f:
                 features = json.load(f)
-            entropy_val = features.get('entropy_src', 0.0)
+            entropy_val = features.get('entropy_realtime', 0.0)
+            pps = features.get('pps', 0)
+            unique_ips = features.get('unique_ips', 0)
         except Exception:
-            entropy_val = self.router.last_entropy
+            entropy_val = 0.0
+            pps = 0
+            unique_ips = 0
 
         body = json.dumps({
             "entropy": round(entropy_val, 4),
-            "window_size": len(self.router.src_ip_window),
-            "unique_ips": len(set(self.router.src_ip_window)),
+            "window_size": unique_ips,
+            "unique_ips": unique_ips,
             "attack_status": self.router.attack_status,
             "blocked_ips": list(self.router.blocked_ips),
-            "packet_rate": self.router.packet_rate
+            "packet_rate": pps
         })
         return Response(content_type='application/json', body=body.encode())

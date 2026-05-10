@@ -12,16 +12,18 @@ JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.js
 # --- Nguong toi thieu de tranh false positive khi traffic thap (vd: pingall) ---
 # Entropy chi co y nghia thong ke khi co du goi tin trong 1 chu ky.
 # Duoi nguong nay, entropy thap la do it goi, KHONG PHAI do tan cong.
-MIN_PKTS_FOR_ALERT = 100   # Pingall tao ~16-40 pkts, flood tao 4000+. Nguong 100 an toan.
-WARMUP_CYCLES = 10        # So chu ky dau khong alert (de flow table on dinh)
+MIN_PKTS_FOR_ALERT = 100   # Pingall ~16-40 pkts, flood 4000+
+WARMUP_CYCLES = 5          # So chu ky dau khong alert
 
 last_total_packets = 0
 last_check_time = time.time()
 first_run = True
 cycle_count = 0
-_idle_logged = False    # Chi in "Mang trong" 1 lan
-_warmup_logged = False  # Chi in warmup 1 lan
-_skip_logged = False    # Chi in skip 1 lan
+_idle_logged = False
+_warmup_logged = False
+_skip_logged = False
+_current_attack = None     # Theo doi attack dang detect de khong in lap
+_attack_count = 0          # So lan emit trong 1 dot tan cong
 
 # Them bien Global nay o dau file detector.py (duoi dong first_run = True)
 last_flow_counts = {}
@@ -93,42 +95,45 @@ def extract_features(flows):
     # 1. Tinh Shannon Entropy cho Source IP
     total_src_pkts_delta = sum(src_ip_counts.values())
     if total_src_pkts_delta > 0:
-        entropy_src_ip = -sum((c/total_src_pkts_delta) * math.log2(c/total_src_pkts_delta) for c in src_ip_counts.values())
+        entropy_real = -sum((c/total_src_pkts_delta) * math.log2(c/total_src_pkts_delta) for c in src_ip_counts.values())
     else:
-        # Khi idle (0 goi), giu entropy = baseline mean (1.3) de KHONG trigger detector.
-        # Truoc day dung 3.4 nhung gia tri nay > baseline_mean + 3*sigma = 2.17
-        # -> EntropyDetector coi la bat thuong (qua cao) -> false positive ngay khi khoi dong!
-        entropy_src_ip = 1.3
+        entropy_real = 0.0  # Khong co traffic -> entropy = 0
 
-    # 2. Tinh Shannon Entropy cho Destination Port (Danh cho s04_http_flood)
+    # Entropy cho detection: dung baseline khi idle de tranh false positive
+    entropy_for_detect = entropy_real if total_src_pkts_delta > 0 else 1.3
+
+    # 2. Tinh Shannon Entropy cho Destination Port
     total_dst_pkts_delta = sum(dst_port_counts.values())
     if total_dst_pkts_delta > 0:
         entropy_dst_port = -sum((c/total_dst_pkts_delta) * math.log2(c/total_dst_pkts_delta) for c in dst_port_counts.values())
     else:
-        entropy_dst_port = 1.3  # Baseline mean khi idle
+        entropy_dst_port = 1.3
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
         global _idle_logged
         if not _idle_logged:
-            print(f"[{timestamp}] Mang trong -> Entropy giu baseline = {entropy_src_ip}")
+            print(f"[{timestamp}] Mang trong (entropy=0)")
             _idle_logged = True
     else:
-        _idle_logged = False  # Reset khi co traffic
-        print(f"[{timestamp}] {len(src_ip_counts)} IPs | {total_src_pkts_delta} pkts | Entropy: {round(entropy_src_ip, 2)}")
+        _idle_logged = False
+        print(f"[{timestamp}] {len(src_ip_counts)} IPs | {total_src_pkts_delta} pkts | Entropy: {round(entropy_real, 2)}")
 
     features = {
         "pps": pps, 
         "bps": pps * 800, 
-        "entropy_src": round(entropy_src_ip, 3),
-        "entropy_src_ip": round(entropy_src_ip, 3),
+        "entropy_src": round(entropy_for_detect, 3),       # Cho detection (baseline khi idle)
+        "entropy_src_ip": round(entropy_for_detect, 3),
+        "entropy_realtime": round(entropy_real, 4),         # Cho dashboard (luon chinh xac)
         "entropy_dst_port": round(entropy_dst_port, 3),
         "syn_pct": round(syn_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0, 
         "icmp_pct": round(icmp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
         "udp_pct": round(udp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
         "tcp_pct": round(tcp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
         "suspect_src_ip": src_ip_counts.most_common(1)[0][0] if src_ip_counts else "10.0.1.10",
-        "_total_pkts_delta": total_src_pkts_delta
+        "_total_pkts_delta": total_src_pkts_delta,
+        "unique_ips": len(src_ip_counts),
+        "timestamp": timestamp
     }
     return features
 
@@ -195,12 +200,29 @@ def main():
                 elif n_rules > 0 and total_pkts < MIN_PKTS_FOR_ALERT:
                     global _skip_logged
                     if not _skip_logged:
-                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts) -> khong alert")
+                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts)")
                         _skip_logged = True
+                    # Reset attack tracking khi traffic giam
+                    _current_attack = None
+                    _attack_count = 0
                 elif n_rules > 0:
                     _skip_logged = False
-                    print(f"[{time.strftime('%H:%M:%S')}] >>> PHAT HIEN: {attack_type} | entropy={features.get('entropy_src','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)} | {n_rules} rules")
-                    alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
+                    # Chi in PHAT HIEN lan dau + emit toi da 3 alert (du cho LOG->RATE->BLOCK)
+                    if _current_attack != attack_type:
+                        _current_attack = attack_type
+                        _attack_count = 0
+                    _attack_count += 1
+                    if _attack_count <= 3:
+                        print(f"[{time.strftime('%H:%M:%S')}] >>> PHAT HIEN: {attack_type} | entropy={features.get('entropy_src','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)} | {n_rules} rules")
+                        alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
+                    elif _attack_count == 4:
+                        print(f"[{time.strftime('%H:%M:%S')}] ... {attack_type} dang tiep tuc (da block, khong gui them alert)")
+                else:
+                    # Khong co anomaly -> reset tracking
+                    if _current_attack is not None:
+                        print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc dot tan cong {_current_attack}")
+                        _current_attack = None
+                        _attack_count = 0
             except Exception as e:
                 print(f"[detector] Loi: {e}", flush=True)
             time.sleep(1)

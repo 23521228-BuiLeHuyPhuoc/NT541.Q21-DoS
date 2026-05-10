@@ -1,16 +1,15 @@
 #!/bin/bash
 VICTIM="10.0.2.10"
-DURATION=60
+DURATION=20
 
 echo "Bat dau Flash Crowd vao $VICTIM trong $DURATION giay..."
-
-# Mo phong nhieu nguoi dung cung truy cap (tu nhieu host khac nhau)
-for i in {1..4}; do
-    ab -c 20 -n 5000 http://$VICTIM/ > /dev/null 2>&1 &
-    AB_PIDS+=($!)
-done
-
+# Mo phong traffic tu nhieu nguon hop phap (entropy cao, PPS vua phai)
+# Kich ban nay KHONG nen bi phat hien la tan cong
+timeout $DURATION hping3 -p 80 -i u2000 $VICTIM &
+PID1=$!
+sleep 1
+timeout $DURATION hping3 -p 443 -i u2000 $VICTIM &
+PID2=$!
 sleep $DURATION
-kill ${AB_PIDS[@]} 2>/dev/null
-
+kill $PID1 $PID2 2>/dev/null
 echo "Hoan tat mo phong Flash Crowd!"
