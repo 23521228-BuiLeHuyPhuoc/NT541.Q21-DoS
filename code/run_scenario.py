@@ -113,17 +113,21 @@ def run_feature_extraction(scenario_id):
         return
     
     print(f"[*] Dang trich xuat features: {pcap_path} -> {csv_path}")
+    os.makedirs("datasets/features", exist_ok=True)
     try:
         result = subprocess.run(
             ["python3", "code/feature_extraction.py", pcap_path, csv_path],
-            timeout=120, capture_output=True, text=True
+            timeout=300
         )
         if result.returncode == 0:
-            print(f"  [OK] Da tao {csv_path}")
+            if os.path.exists(csv_path):
+                print(f"  [OK] Da tao {csv_path} ({os.path.getsize(csv_path)} bytes)")
+            else:
+                print(f"  [!] feature_extraction exit 0 nhung khong tao duoc CSV")
         else:
-            print(f"  [!] Feature extraction loi: {result.stderr[-200:] if result.stderr else 'unknown'}")
+            print(f"  [!] Feature extraction thoat voi ma loi {result.returncode}")
     except subprocess.TimeoutExpired:
-        print(f"  [!] Feature extraction timeout (120s)")
+        print(f"  [!] Feature extraction timeout (300s) - pcap qua lon?")
     except Exception as e:
         print(f"  [!] Feature extraction exception: {e}")
 
