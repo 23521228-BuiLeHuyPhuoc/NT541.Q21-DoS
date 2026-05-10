@@ -12,7 +12,7 @@ JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.js
 # --- Nguong toi thieu de tranh false positive khi traffic thap (vd: pingall) ---
 # Entropy chi co y nghia thong ke khi co du goi tin trong 1 chu ky.
 # Duoi nguong nay, entropy thap la do it goi, KHONG PHAI do tan cong.
-MIN_PKTS_FOR_ALERT = 50   # So goi tin toi thieu trong 1 chu ky de xet alert
+MIN_PKTS_FOR_ALERT = 100   # Pingall tao ~16-40 pkts, flood tao 4000+. Nguong 100 an toan.
 WARMUP_CYCLES = 10        # So chu ky dau khong alert (de flow table on dinh)
 
 last_total_packets = 0
@@ -183,20 +183,19 @@ def main():
                     elif features.get("entropy_src", 0) > 3.5:
                         attack_type = "spoofed_flood"
                 
-                # --- GUARD ---
+                # --- GUARD: Chi alert khi traffic du lon ---
+                # Pingall: ~16-40 pkts/cycle, attack: 4000+ pkts/cycle
                 total_pkts = features.get("_total_pkts_delta", 0)
-                current_pps = features.get("pps", 0)
-                has_traffic = total_pkts > 30 or current_pps > 50
                 
                 if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
                     global _warmup_logged
                     if not _warmup_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [WARMUP] Bo qua alert trong {WARMUP_CYCLES} chu ky dau...")
                         _warmup_logged = True
-                elif n_rules > 0 and not has_traffic:
+                elif n_rules > 0 and total_pkts < MIN_PKTS_FOR_ALERT:
                     global _skip_logged
                     if not _skip_logged:
-                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap (pkts={total_pkts}, pps={int(current_pps)}) -> khong alert")
+                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts) -> khong alert")
                         _skip_logged = True
                 elif n_rules > 0:
                     _skip_logged = False
