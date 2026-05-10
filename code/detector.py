@@ -85,14 +85,17 @@ def extract_features(flows):
     if total_src_pkts_delta > 0:
         entropy_src_ip = -sum((c/total_src_pkts_delta) * math.log2(c/total_src_pkts_delta) for c in src_ip_counts.values())
     else:
-        entropy_src_ip = 3.4  # Giu baseline khi mang idle (khong co goi tin moi)
+        # Khi idle (0 goi), giu entropy = baseline mean (1.3) de KHONG trigger detector.
+        # Truoc day dung 3.4 nhung gia tri nay > baseline_mean + 3*sigma = 2.17
+        # -> EntropyDetector coi la bat thuong (qua cao) -> false positive ngay khi khoi dong!
+        entropy_src_ip = 1.3
 
     # 2. Tinh Shannon Entropy cho Destination Port (Danh cho s04_http_flood)
     total_dst_pkts_delta = sum(dst_port_counts.values())
     if total_dst_pkts_delta > 0:
         entropy_dst_port = -sum((c/total_dst_pkts_delta) * math.log2(c/total_dst_pkts_delta) for c in dst_port_counts.values())
     else:
-        entropy_dst_port = 3.4  # Giu baseline khi mang idle
+        entropy_dst_port = 1.3  # Baseline mean khi idle
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
