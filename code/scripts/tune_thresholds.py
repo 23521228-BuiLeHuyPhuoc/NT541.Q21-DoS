@@ -7,14 +7,14 @@ def evaluate(k_sigma, h_factor):
         mu = {k: v["mean"] for k,v in b.items()}
         sig = {k: v["std"] for k,v in b.items()}
     except Exception:
-        print("Lỗi: Không tìm thấy datasets/baseline_stats.json")
+        print("Loi: Khong tim thay datasets/baseline_stats.json")
         return 0, 0, 0
 
     files = glob.glob('datasets/features/*.csv')
     TP = FP = TN = FN = 0
 
     for file in files:
-        # baseline và s08 (flash crowd) được coi là mạng bình thường (không được báo động)
+        # baseline va s08 (flash crowd) duoc coi la mang binh thuong (khong duoc bao dong)
         is_attack = not ('s08' in file or 'baseline' in file)
         
         with open(file, 'r') as f:
@@ -26,12 +26,12 @@ def evaluate(k_sigma, h_factor):
                 total_rows += 1
                 alert = False
                 
-                # Mô phỏng Entropy Detector
+                # Mo phong Entropy Detector
                 ent = float(row.get('entropy_src_ip', 0))
                 if abs(ent - mu.get('entropy_src', 0)) > k_sigma * sig.get('entropy_src', 1):
                     alert = True
                 
-                # Mô phỏng Stats Detector (Z-score đơn giản cho PPS)
+                # Mo phong Stats Detector (Z-score don gian cho PPS)
                 pps = float(row.get('pps', 0))
                 if abs(pps - mu.get('pps', 0)) > h_factor * sig.get('pps', 1):
                     alert = True
@@ -39,14 +39,14 @@ def evaluate(k_sigma, h_factor):
                 if alert:
                     alerts_in_file += 1
 
-            # Đánh giá file này
+            # Danh gia file nay
             if is_attack:
-                if alerts_in_file > (total_rows * 0.1): # Cảnh báo > 10% số dòng là bắt được
+                if alerts_in_file > (total_rows * 0.1): # Canh bao > 10% so dong la bat duoc
                     TP += 1
                 else:
                     FN += 1
             else:
-                if alerts_in_file > (total_rows * 0.1): # Cảnh báo > 10% ở mạng bình thường là báo giả
+                if alerts_in_file > (total_rows * 0.1): # Canh bao > 10% o mang binh thuong la bao gia
                     FP += 1
                 else:
                     TN += 1
@@ -54,7 +54,7 @@ def evaluate(k_sigma, h_factor):
     TPR = TP / (TP + FN) if (TP + FN) > 0 else 0
     FPR = FP / (FP + TN) if (FP + TN) > 0 else 0
     
-    # Tính F1 Score
+    # Tinh F1 Score
     precision = TP / (TP + FP) if (TP + FP) > 0 else 0
     F1 = 2 * (precision * TPR) / (precision + TPR) if (precision + TPR) > 0 else 0
     
@@ -84,11 +84,11 @@ def main():
     print("-" * 60)
     print(f"[+] BEST PARAMS: {best_params} (F1: {best_metrics['F1']:.2f}, TPR: {best_metrics['TPR']:.2f}, FPR: {best_metrics['FPR']:.2f})")
 
-    # Lưu cấu hình tốt nhất vào yaml
+    # Luu cau hinh tot nhat vao yaml
     os.makedirs('code', exist_ok=True)
     with open('code/thresholds.yaml', 'w') as f:
         yaml.dump(best_params, f)
-    print("[+] Đã lưu cấu hình tối ưu vào code/thresholds.yaml")
+    print("[+] Da luu cau hinh toi uu vao code/thresholds.yaml")
 
 if __name__ == '__main__':
     main()
