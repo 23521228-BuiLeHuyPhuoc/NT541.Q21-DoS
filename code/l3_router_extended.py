@@ -90,12 +90,12 @@ class L3RouterExtended(SimpleRouterEntropy):
 
         if action == 'Logged':
             self.logger.warning(f"[MITIGATION] Cap 1/3: GHI NHAN — {src} ({attack})")
-            self.attack_status = 1  # Dashboard: dang bi tan cong
+            self.attack_status = 2 if is_spoof else 1
 
         elif action == 'Rate-Limited':
             self.logger.warning(f"[MITIGATION] Cap 2/3: RATE-LIMIT — {src} (1000 pps)")
             self.ratelimit.apply(dp, src, pps=1000)
-            self.attack_status = 1
+            self.attack_status = 2 if is_spoof else 1
 
         else:  # Blocked
             if is_spoof:
@@ -113,7 +113,7 @@ class L3RouterExtended(SimpleRouterEntropy):
 
             self.blocked_ips.add(src)
             self.blacklist.add(src, ttl=20)
-            self.attack_status = 1
+            self.attack_status = 2 if is_spoof else 1
 
             # Tu dong go chan va reset trang thai sau 20s
             from ryu.lib import hub
@@ -165,8 +165,8 @@ class AlertAPI(ControllerBase):
         # Khi spoof detected -> LUON dung entropy tu controller (file khong dang tin cay)
         if self.router.attack_status == 2 and self.router.last_entropy > 0:
             entropy_val = self.router.last_entropy
-            unique_ips = len(self.router._pktin_unique_ips) if self.router._pktin_unique_ips else 0
-            pps = self.router.packet_rate
+            unique_ips = len(self.router._pktin_unique_ips) if self.router._pktin_unique_ips else self.router._pktin_count
+            pps = self.router.total_pps if self.router.total_pps > 0 else self.router._pktin_count
         else:
             # Binh thuong: doc tu file detector.py
             try:
