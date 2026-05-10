@@ -79,7 +79,9 @@ class L3RouterExtended(SimpleRouterEntropy):
 
         attack = payload.get('attack', 'unknown')
         action = payload.get('action', 'Logged')
-        is_spoof = 'spoof' in attack.lower()
+        # DNS amplification cung dung IP spoofing (rand-source) -> can block MAC
+        is_spoof = ('spoof' in attack.lower() or 'dns_ampl' in attack.lower()
+                     or self.attack_status == 2)
 
         # Chi thao tac tren switch s2 (dpid=2) — switch phat hien
         # Khong can block tren tat ca switch, tranh anh huong L2 flows
