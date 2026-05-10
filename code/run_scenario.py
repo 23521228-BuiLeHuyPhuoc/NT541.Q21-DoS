@@ -144,7 +144,7 @@ def run(scenario_id):
         
         src = "10.0.4.10" if scenario_id == "s08_flash_crowd" else "10.0.1.10"
         
-        print("[*] Dang cho he thong phat hien (Detect) — timeout 30s...")
+        print("[*] Dang cho he thong phat hien (Detect) - timeout 30s...")
         detect_lat = wait_for_alert(t0, timeout=30)
         if detect_lat:
             print(f"  [+] Da phat hien tan cong! Do tre: {detect_lat:.3f}s")
@@ -161,7 +161,7 @@ def run(scenario_id):
             except Exception:
                 pass
 
-        print("[*] Dang cho he thong ngan chan (Mitigate) — timeout 30s...")
+        print("[*] Dang cho he thong ngan chan (Mitigate) - timeout 30s...")
         mitigate_lat = wait_for_flowmod(t0, src, timeout=30)
         if mitigate_lat:
             print(f"  [+] Da cai Flow Drop! Do tre: {mitigate_lat:.3f}s")
