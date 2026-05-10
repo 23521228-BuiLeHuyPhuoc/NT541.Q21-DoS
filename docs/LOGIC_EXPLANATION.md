@@ -3,407 +3,349 @@
 ## 1. Kiến trúc tổng thể
 
 ```
-                    +------------------+
-                    |   Dashboard      |   (Flask :8080)
-                    |   index.html     |
-                    |   alerts.html    |
-                    |   flows.html     |
-                    +--------+---------+
-                             |
-                     /api/stats, /api/block, /api/unblock
-                             |
-+------------------+         |         +--------------------+
-|  Detector        |  /api/alert       | Ryu Controller     |
-|  detector.py     +-------->|-------->| l3_router_test.py  |
-|                  |         |         | l3_router_extended |
-|  - entropy.py    |         |         |                    |
-|  - stats.py      |         |         | - Spoof detection  |
-|  - signature_    |         |         | - Flow management  |
-|    matcher.py    |         |         | - Mitigation       |
-+--------+---------+         |         +---------+----------+
-         |                   |                   |
-    Đọc flow stats      /api/entropy        OpenFlow 1.3
-    từ Ryu REST API          |                   |
-         |                   |         +---------+----------+
-         +-------------------+-------->|  OVS Switches      |
-                                       |  s1, s2, s3, s4    |
++------------------+                   +--------------------+
+|  Detector        |    /api/alert     | Ryu Controller     |
+|  detector.py     +------------------>| l3_router_test.py  |
+|                  |                   | l3_router_extended |
+|  - entropy.py    |                   +--------+-----------+
+|  - stats.py      |                            |
+|  - signature_    |                        OpenFlow 1.3
+|    matcher.py    |                            |
++--------+---------+                   +--------+-----------+
+         |                             |  OVS Switches      |
+    Đọc flow stats từ Ryu REST API     |  s1, s2, s3, s4    |
                                        +--------------------+
+         +------------------+
+         |   Dashboard      |  (Flask :8080)
+         |   /api/stats     +---> Đọc từ Ryu /api/entropy
+         +------------------+
 ```
 
 ---
 
-## 2. Detection Engine (3 tầng)
+## 2. Tầng 1: Entropy Detector (`entropy.py`)
 
-Hệ thống phát hiện dựa trên 3 detection engine độc lập, hoạt động song song:
-
-### 2.1 Entropy Detector (entropy.py)
-
-**Cơ sở lý thuyết: Shannon Entropy (Claude Shannon, 1948)**
-
-Shannon entropy đo mức độ "ngẫu nhiên" trong phân phối IP nguồn:
+### 2.1 Shannon Entropy — Công thức
 
 ```
 H(X) = -Σ[ p(xi) × log₂(p(xi)) ]
 ```
 
-Trong đó:
-- `p(xi) = số_gói_từ_IP_i / tổng_số_gói`
-- `H(X) = 0` khi tất cả gói từ 1 IP duy nhất (tấn công từ 1 nguồn)
-- `H(X)` cao khi nhiều IP khác nhau (traffic bình thường hoặc IP spoofing)
-
-**Rényi Entropy (Alfréd Rényi, 1961)**
-
-Tổng quát hóa của Shannon, dùng bậc q=2 (Collision entropy):
-
-```
-H_q(X) = (1/(1-q)) × log₂( Σ[ p(xi)^q ] )
+**Trong code (`entropy.py`, dòng 5-7):**
+```python
+def shannon(items):
+    c = Counter(items); n = sum(c.values())
+    return -sum((v/n)*math.log2(v/n) for v in c.values()) if n else 0
 ```
 
-Rényi bậc 2 nhạy cảm hơn với phân phối lệch (một vài IP chiếm đa số traffic).
+- `items` = danh sách IP nguồn trong 1 window (ví dụ: `['10.0.1.10', '10.0.1.10', '10.0.2.10']`)
+- `Counter(items)` = đếm số lần xuất hiện mỗi IP: `{'10.0.1.10': 2, '10.0.2.10': 1}`
+- `v/n` = `p(xi)` = xác suất IP đó xuất hiện (2/3 và 1/3)
+- Kết quả: `H = -(2/3 × log₂(2/3) + 1/3 × log₂(1/3))` ≈ 0.918
 
-**Cách phát hiện:**
+**Được gọi ở đâu?**
+- `feature_extraction.py` dòng 185: `shannon(src_ips)` → tính entropy IP nguồn cho mỗi window khi trích xuất features từ pcap
+- `l3_router_test.py` dòng 389: tính entropy thực tế từ IP trong spoof detection window
 
-| Metric | Bình thường | SYN/UDP/ICMP Flood | IP Spoof |
-|--------|------------|---------------------|----------|
-| Entropy | ~1.3 (baseline) | ~0 (1 IP) | >8 (hàng nghìn IP) |
+**Dùng để làm gì?**
+- Entropy = 0 → tất cả gói từ 1 IP → nghi ngờ tấn công flood (SYN/UDP/ICMP)
+- Entropy cao (>8) → hàng nghìn IP khác nhau → nghi ngờ IP spoofing
+- Entropy ~1.3 → bình thường (vài người dùng)
 
-**Phân biệt flash crowd vs spoof flood:**
+### 2.2 Rényi Entropy — Công thức
 
+```
+H_q(X) = (1/(1-q)) × log₂( Σ[ p(xi)^q ] )     (q = 2)
+```
+
+**Trong code (`entropy.py`, dòng 9-13):**
+```python
+def renyi(items, q=2):
+    c = Counter(items); n = sum(c.values())
+    s = sum((v/n)**q for v in c.values())
+    return (1/(1-q)) * math.log2(s) if s > 0 else 0
+```
+
+**Dùng để làm gì?**
+Rényi bậc 2 nhạy cảm hơn Shannon khi có IP chiếm đa số traffic. Ví dụ: nếu 1 IP gửi 90% traffic và 10 IP khác gửi 10%, Shannon vẫn cho giá trị khá cao nhưng Rényi giảm mạnh hơn → phát hiện sớm hơn.
+
+**Được gọi ở đâu?**
+- `feature_extraction.py` dòng 188: `renyi(src_ips)` → tính Rényi entropy cho mỗi window
+- `entropy.py` dòng 48: kiểm tra `entropy_renyi_src` có vượt ngưỡng 3σ không
+
+### 2.3 Ngưỡng phát hiện: 3-sigma rule
+
+```
+bất_thường = |giá_trị - μ_baseline| > 3 × σ_baseline
+```
+
+**Trong code (`entropy.py`, dòng 52-55):**
+```python
+mu, sig = self.mu.get(mu_key, 0), self.sigma.get(mu_key, 1)
+if abs(v - mu) > self.k * sig:       # self.k = 3
+    alerts.append({"source": "entropy", "feature": key, ...})
+```
+
+- `mu` và `sigma` được đọc từ `datasets/baseline_stats.json` (entropy bình thường: μ=1.298, σ=0.290)
+- Ví dụ: entropy = 0 → |0 - 1.298| = 1.298 > 3 × 0.290 = 0.870 → **BẤT THƯỜNG**
+- Ví dụ: entropy = 1.1 → |1.1 - 1.298| = 0.198 < 0.870 → **bình thường**
+
+### 2.4 Phân biệt flash crowd vs spoof flood
+
+**Trong code (`entropy.py`, dòng 33-40):**
 ```python
 is_flash_crowd = (
-    entropy_src > 4.0 AND       # Nhiều IP khác nhau
-    syn_pct < 0.3 AND           # Không chỉ có SYN (đa dạng traffic)
-    dst_port_entropy > 2.0      # Nhiều port khác nhau
+    entropy_src > 4.0 and          # Nhiều IP khác nhau
+    syn_pct < 0.3 and              # Không chỉ có SYN
+    dst_port_entropy > 2.0         # Nhiều port khác nhau
 )
+if is_flash_crowd:
+    return {"anomaly": False}      # KHÔNG phải tấn công
 ```
 
-Spoof flood có entropy CAO nhưng syn_pct CAO (>0.5) và dst_port_entropy THẤP (chỉ 1-2 port).
+**Tại sao logic này đúng?**
+| | Flash Crowd | Spoof Flood |
+|---|---|---|
+| Entropy IP | Cao (nhiều user thật) | Cao (nhiều IP giả) |
+| syn_pct | Thấp (<0.3, đa dạng traffic) | Cao (>0.5, chỉ SYN) |
+| Entropy port | Cao (80, 443, 8080, 3306...) | Thấp (chỉ port 80) |
 
-**Ngưỡng phát hiện: k-sigma rule (3-sigma)**
+---
 
+## 3. Tầng 2: Stats Detector (`stats.py`)
+
+**Vai trò:** Entropy phát hiện dựa trên **phân bố IP** (ai gửi?). Stats phát hiện dựa trên **lưu lượng** (gửi bao nhiêu?). Hai tầng bổ sung cho nhau.
+
+### 3.1 Z-Score — Phát hiện đột biến tức thì
+
+```
+Z = (X - μ) / σ        bất thường khi |Z| > 3
+```
+
+**Trong code (`stats.py`, dòng 17-20):**
 ```python
-anomaly = abs(giá_trị - baseline_mean) > 3 × baseline_std
+def zscore(self, key, x):
+    mu, sig = self.mu[key], max(self.sigma[key], 1e-6)
+    z = (x - mu) / sig
+    return {"alert": abs(z) > 3, "score": z}
 ```
 
-Dựa trên phân phối chuẩn: 99.7% giá trị nằm trong [μ - 3σ, μ + 3σ].
-Bất kỳ giá trị nào vượt ngoài là bất thường.
+- `key` = "pps", `x` = PPS hiện tại (ví dụ: 5000)
+- `mu` = PPS baseline trung bình (11.4), `sig` = độ lệch chuẩn (6.4)
+- `z = (5000 - 11.4) / 6.4 = 779` → **|779| > 3 → BẤT THƯỜNG**
+- Khi PPS = 15: `z = (15 - 11.4) / 6.4 = 0.56` → |0.56| < 3 → bình thường
 
----
-
-### 2.2 Stats Detector (stats.py)
-
-**Vai trò:** Bổ trợ cho Entropy Detector. Trong khi Entropy phát hiện dựa trên **phân bố IP nguồn** (ai gửi?), Stats Detector phát hiện dựa trên **lưu lượng mạng** (gửi bao nhiêu?).
-
-**Tại sao cần cả hai?**
-- Entropy phát hiện tốt khi tấn công từ 1 IP (entropy giảm) hoặc nhiều IP giả (entropy tăng)
-- Nhưng entropy KHÔNG phát hiện được nếu attacker giữ entropy bình thường mà chỉ tăng PPS
-- Stats Detector bắt được trường hợp này: PPS/BPS tăng đột biến so với baseline
-
-**Gồm 3 thuật toán thống kê, mỗi cái bắt một loại bất thường khác nhau:**
-
-#### Z-Score (Phát hiện đột biến tức thì)
+### 3.2 EWMA — Phát hiện xu hướng tăng dần
 
 ```
-Z = (X - μ) / σ
+EWMA_t = α × X_t + (1 - α) × EWMA_{t-1}      (α = 0.3)
 ```
-- `|Z| > 3` → bất thường (vượt 3 độ lệch chuẩn)
-- **Ưu điểm:** Phát hiện ngay lập tức khi PPS nhảy từ 10 lên 5000
-- **Nhược điểm:** Không phát hiện được tăng chậm (từ 10 → 50 → 200 → 5000)
 
-#### EWMA (Exponentially Weighted Moving Average - Phát hiện xu hướng)
-
-```
-EWMA_t = α × X_t + (1 - α) × EWMA_{t-1}
-```
-- `α = 0.3` (trọng số cho giá trị mới)
-- Phát hiện khi `|X - EWMA| > 3 × σ`
-- **Ưu điểm:** Theo dõi xu hướng, ít bị ảnh hưởng bởi spike đơn lẻ
-- **Ví dụ:** PPS tăng dần 10 → 50 → 200 → EWMA nhận ra đang có xu hướng tăng
-
-#### CUSUM (Cumulative Sum - E.S. Page, 1954 - Phát hiện tích lũy)
-
-```
-S_t = max(0, S_{t-1} + (X_t - μ - k))
-Alert khi S_t > h
-```
-- `k = 0.5 × σ` (slack, tránh false positive)
-- `h = 5 × σ` (ngưỡng alert)
-- **Ưu điểm:** Phát hiện shift nhỏ nhưng liên tục (tích lũy theo thời gian)
-- **Ví dụ:** PPS tăng nhẹ 10 → 15 → 20 → 25, mỗi lần tăng nhỏ nhưng CUSUM tích lũy và cuối cùng vượt ngưỡng
-
-**Metrics được theo dõi:** pps (packets/sec), bps (bits/sec), new_flows_per_sec
-
-**Trong detector.py, Stats Detector được gọi như sau:**
+**Trong code (`stats.py`, dòng 22-26):**
 ```python
-stat_res = stat_det.check(features)
-if stat_res.get("anomaly"):
-    n_rules += 1           # Tăng số engine phát hiện bất thường
-    evidence.extend(...)   # Thêm bằng chứng
+def ewma_check(self, key, x):
+    self.ewma[key] = self.alpha * x + (1-self.alpha) * self.ewma[key]
+    dev = abs(x - self.ewma[key])
+    return {"alert": dev > 3*self.sigma[key]}
 ```
 
-Khi cả Entropy VÀ Stats đều phát hiện bất thường → độ tin cậy cao → chắc chắn là tấn công.
+**Ví dụ thực tế:** PPS tăng dần: 10 → 50 → 200 → 800
+- Bước 1: EWMA = 0.3×10 + 0.7×11.4 = 10.98 → dev = |10-10.98| = 0.98 → OK
+- Bước 2: EWMA = 0.3×50 + 0.7×10.98 = 22.69 → dev = |50-22.69| = 27.31 → OK
+- Bước 3: EWMA = 0.3×200 + 0.7×22.69 = 75.88 → dev = |200-75.88| = 124.12 → **BẤT THƯỜNG** (>3×6.4=19.2)
 
----
+### 3.3 CUSUM — Phát hiện tích lũy (E.S. Page, 1954)
 
-### 2.3 Signature Matcher (signature_matcher.py)
+```
+S_t = max(0, S_{t-1} + X_t - μ - k)      Alert khi S_t > h
+```
 
-**Cơ sở lý thuyết: Rule-based Detection (kiểu Snort/Suricata)**
-
-Mỗi loại tấn công có "dấu vân tay" đặc trưng được định nghĩa trong `attack_signatures.csv`:
-
-| Tấn công | Rule | Giải thích |
-|----------|------|------------|
-| SYN Flood | `tcp_pct>0.5 AND entropy<1.5 AND pps>3000` | TCP chiếm đa số, 1 nguồn, PPS cực cao |
-| UDP Flood | `udp_pct>0.5 AND entropy<1.5 AND pps>500` | UDP chiếm đa số, PPS cao |
-| ICMP Flood | `icmp_pct>0.5 AND pps>500` | ICMP chiếm đa số, PPS cao |
-| HTTP Flood | `tcp>0.8 AND entropy<1.5 AND 300<pps<3000` | TCP, PPS trung bình |
-| DNS Ampl | `udp>0.5 AND entropy>3 AND pps>100` | UDP port 53, nhiều IP giả |
-| IP Spoof | `entropy>3.5 AND pps>500` | Entropy rất cao (hàng nghìn IP giả) |
-| Slowloris | `tcp>0.5 AND 30<pps<300 AND entropy<1.5` | TCP, PPS THẤP (tấn công chậm) |
-
-**Độ ưu tiên:** Khi nhiều signature match, chọn rule có nhiều điều kiện nhất (cụ thể nhất):
+**Trong code (`stats.py`, dòng 28-36):**
 ```python
-hits.sort(key=lambda h: h["_specificity"], reverse=True)
+def cusum_check(self, key, x):
+    mu, sig = self.mu[key], max(self.sigma[key], 1e-6)
+    k = self.k_factor * sig        # k = 0.5 × 6.4 = 3.2 (slack)
+    h = self.h_factor * sig        # h = 5 × 6.4 = 32 (ngưỡng)
+    self.cusum[key] = max(0, self.cusum[key] + (x - mu - k))
+    alert = self.cusum[key] > h
 ```
 
----
+**Ví dụ thực tế:** PPS tăng nhẹ liên tục: 20, 25, 30, 20, 25
+- S₁ = max(0, 0 + 20 - 11.4 - 3.2) = 5.4
+- S₂ = max(0, 5.4 + 25 - 11.4 - 3.2) = 15.8
+- S₃ = max(0, 15.8 + 30 - 11.4 - 3.2) = 31.2
+- S₄ = max(0, 31.2 + 20 - 11.4 - 3.2) = 36.6 → **> 32 → ALERT!**
 
-### 2.4 Kết hợp 3 tầng (detector.py)
+Mỗi lần tăng nhỏ nhưng CUSUM tích lũy và cuối cùng vượt ngưỡng.
 
-```
-Mỗi chu kỳ (~1 giây):
-  1. Lấy flow stats từ Ryu REST API
-  2. Tính features (pps, bps, entropy, tcp_pct, ...)
-  3. Chạy 3 engine:
-     - ent_det.check(features)  → anomaly True/False
-     - stat_det.check(features) → anomaly True/False
-     - sig_matcher.match(features) → danh sách signature match
-  4. n_rules = số engine phát hiện bất thường
-  5. Nếu n_rules >= 1 → gửi alert
-```
+### 3.4 Kết hợp trong detector.py
 
-**Guard chống false positive:**
-- `MIN_PKTS_FOR_ALERT = 50`: Chỉ alert khi có đủ gói (tránh pingall bị nhầm)
-- `WARMUP_CYCLES = 5`: Bỏ qua 5 chu kỳ đầu khi khởi động
-- PPS guard: Nếu CHỈ signature match (không có stat/entropy) VÀ pps < 200 → bỏ qua
-
----
-
-## 3. Spoof Detection (l3_router_test.py)
-
-**Tại sao cần tách riêng?**
-
-IP Spoof dùng `--rand-source` → mỗi gói có IP khác nhau → detector dựa trên flow stats KHÔNG thấy được vì switch gộp chung vào 1 flow rule. Phải detect trực tiếp từ `packet_in` event.
-
-**Thuật toán:**
-
-```
-Mỗi 2 giây (SPOOF_WINDOW):
-  Đếm packet_in count, unique_ips, MAC counter, protocol, port
-  
-  Nếu KHÔNG thỏa điều kiện → reset, tiếp tục
-  
-  Điều kiện SPOOF:
-    - packet_in > 100 gói trong 2s
-    - unique_ips > 20 IP duy nhất
-    - unique_ips / total > 30% (tỷ lệ IP mới cao)
-    
-  Nếu thỏa → SPOOF DETECTED:
-    - Xác định protocol + port (phân loại attack)
-    - Block MAC address của attacker (vì IP giả, MAC không đổi)
-    - Hard_timeout = 20s (tự động gỡ sau 20 giây)
-```
-
-**Phân loại dựa trên protocol:**
+**Trong code (`detector.py`, dòng 200-209):**
 ```python
-if proto == UDP and port == 53 → s05_dns_ampl
-elif proto == UDP             → s02_udp_flood (spoofed)
-elif proto == ICMP            → s03_icmp_flood (spoofed)
-else (TCP)                    → s06_ip_spoof
+ent_res = ent_det.check(features)        # Tầng 1: Entropy
+stat_res = stat_det.check(features)       # Tầng 2: Stats
+sig_hits = sig_matcher.match(features)    # Tầng 3: Signature
+
+n_rules = 0
+if ent_res.get("anomaly"): n_rules += 1  # Entropy bất thường → +1
+if stat_res.get("anomaly"): n_rules += 1  # Stats bất thường → +1
+if sig_hits: n_rules += len(sig_hits)      # Signature match → +N
 ```
 
-**Tại sao block MAC thay vì IP?**
-Khi attacker dùng `--rand-source`, IP nguồn thay đổi liên tục → block IP vô nghĩa. Nhưng MAC address của attacker KHÔNG ĐỔI (do network interface của máy tấn công chỉ có 1 MAC).
+- `n_rules = 0` → bình thường
+- `n_rules = 1` → cấp 1 (LOG)
+- `n_rules = 2` → cấp 2 (RATE-LIMIT)
+- `n_rules >= 3` → cấp 3 (BLOCK)
 
 ---
 
-## 4. Graduated Response (Mitigation)
+## 4. Tầng 3: Signature Matcher (`signature_matcher.py`)
 
-**Cơ sở lý thuyết: Defense-in-Depth (RFC 4732 - DDoS Taxonomy)**
-
-Hệ thống áp dụng 3 cấp phản hồi tăng dần, tránh over-reaction:
-
-```
-Cấp 1: LOG (INFO)
-  → Ghi nhận cảnh báo, không can thiệp
-  → Cho phép quan sát trước khi hành động
-
-Cấp 2: RATE-LIMIT (WARN)
-  → Giới hạn attacker xuống 1000 pps
-  → Dùng OpenFlow Meter Table
-  → Không chặn hoàn toàn, vẫn cho phép traffic hợp pháp
-
-Cấp 3: BLOCK (CRITICAL)
-  → Chặn hoàn toàn IP/MAC của attacker
-  → Cài flow rule: priority=100, match=ip_src, actions=drop
-  → Tự động gỡ chặn sau 20 giây (hard_timeout)
-```
-
-### 4.1 Block Module (mitigation.py)
-
+**Trong code (`signature_matcher.py`, dòng 49-62):**
 ```python
-# Cài flow rule DROP trên switch
-match = OFPMatch(eth_type=0x0800, ipv4_src=attacker_ip)
-instructions = []  # Không có action = DROP
-FlowMod(priority=100, match, instructions, hard_timeout=20s)
+def match(self, features):
+    for r in self.rules:
+        rule_text = r.get('rule', '')           # "tcp_pct>0.5 AND pps>3000"
+        if safe_eval(rule_text, features):       # Đánh giá rule với features hiện tại
+            hits.append({"attack": r['name']})   # Match → thêm vào kết quả
+    hits.sort(key=lambda h: h["_specificity"], reverse=True)
 ```
 
-### 4.2 Rate-Limit Module (mitigation.py)
+`safe_eval` parse rule thành AST Python và đánh giá an toàn:
+- Input: `"tcp_pct>0.5 AND pps>3000"`, features = `{"tcp_pct": 0.95, "pps": 5000}`
+- Kết quả: `0.95 > 0.5 AND 5000 > 3000` → `True` → match s01_syn_flood
 
+---
+
+## 5. Spoof Detection (`l3_router_test.py`)
+
+**Tại sao cần tách riêng?** IP Spoof dùng `--rand-source` → mỗi gói có IP khác → switch cài 1 flow rule cho TẤT CẢ → detector đọc flow stats chỉ thấy 1 entry → KHÔNG phát hiện được. Phải detect trực tiếp từ `packet_in`.
+
+**Trong code (`l3_router_test.py`, dòng 287-310):**
 ```python
-# Tạo Meter với band DROP khi vượt 1000 pps
-meter_band = OFPMeterBandDrop(rate=1000, burst=100)
-MeterMod(command=ADD, flags=PKTPS, meter_id, bands=[band])
+# Mỗi packet_in từ IP không nằm trong whitelist:
+self._pktin_count += 1
+self._pktin_unique_ips.add(p_ip.src)
+self._pktin_mac_counter[p_eth.src] += 1
+self._pktin_proto_counter[p_ip.proto] += 1
 
-# Cài flow rule sử dụng meter
-match = OFPMatch(eth_type=0x0800, ipv4_src=attacker_ip)
-instructions = [InstructionMeter(meter_id), InstructionActions(OUTPUT:NORMAL)]
-FlowMod(priority=80, match, instructions, hard_timeout=120s)
+# Mỗi 2 giây kiểm tra:
+if now - self._pktin_window_start >= 2:
+    self._check_spoof_flood(dp, victim_ip)
 ```
 
-### 4.3 Blacklist Manager (mitigation.py)
-
+**Điều kiện phát hiện (`l3_router_test.py`, dòng 370-380):**
 ```python
-# Lưu {IP: thời_gian_hết_hạn}
-entries = {"10.0.1.10": 1715000020}  # hết hạn sau 20s
+if (self._pktin_count < 100 or             # < 100 gói → bình thường
+    len(unique_ips) < 20 or                 # < 20 IP → bình thường
+    len(unique_ips)/self._pktin_count < 0.3):  # Tỷ lệ IP mới < 30%
+    return  # KHÔNG phải spoof
+```
 
-# Tự động dọn dẹp mỗi 3 giây
-while True:
-    xóa các IP đã hết hạn
-    sleep(3)
+**Block MAC thay vì IP (`l3_router_test.py`, dòng 446-450):**
+```python
+match = parser.OFPMatch(eth_src=top_mac)     # Match theo MAC attacker
+mod = parser.OFPFlowMod(datapath=dp, priority=100,
+                        match=match, instructions=[],  # Không action = DROP
+                        hard_timeout=20)                # Tự gỡ sau 20s
+dp.send_msg(mod)
 ```
 
 ---
 
-## 5. Logic các kịch bản tấn công
+## 6. Graduated Response (`l3_router_extended.py`)
 
-### s01: SYN Flood
-```bash
-hping3 -S -p 80 --flood VICTIM
-```
-- `-S`: SYN flag, `-p 80`: port 80, `--flood`: gửi nhanh nhất có thể
-- **Mục đích:** Chiếm hết bảng kết nối (SYN queue) của server
-- **Dấu hiệu:** entropy ~0, pps >3000, tcp_pct ~1.0, syn_pct ~1.0
+**Trong code (`l3_router_extended.py`, dòng 93-116):**
+```python
+if action == 'Logged':        # Cấp 1: Ghi nhận
+    self.attack_status = 1
 
-### s02: UDP Flood
-```bash
-hping3 --udp -p 53 --flood VICTIM
-```
-- **Mục đích:** Làm nghẽn băng thông với gói UDP vô nghĩa
-- **Dấu hiệu:** entropy ~0, pps >500, udp_pct >0.5
+elif action == 'Rate-Limited': # Cấp 2: Giới hạn tốc độ
+    self.ratelimit.apply(dp, src, pps=1000)
 
-### s03: ICMP Flood (Ping of Death)
-```bash
-hping3 -1 --flood VICTIM
+else:                          # Cấp 3: Chặn hoàn toàn
+    self.block.apply(dp, src, timeout=20)
+    self.blocked_ips.add(src)
 ```
-- `-1`: ICMP mode
-- **Mục đích:** Làm nghẽn băng thông với ICMP Echo Request
-- **Dấu hiệu:** entropy ~0, pps >500, icmp_pct >0.5
 
-### s04: HTTP Flood
-```bash
-hping3 -S -p 80 -i u500 VICTIM
+**Block Module (`mitigation.py`, dòng 9-16):**
+```python
+# Cài flow rule: match IP nguồn, không có action → DROP
+match = OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
+instructions = []  # Rỗng = DROP tất cả gói từ IP này
+FlowMod(priority=100, match=match, instructions=[], hard_timeout=20)
 ```
-- `-i u500`: 1 gói mỗi 500 microsecond = ~2000 pps
-- **Mục đích:** Làm quá tải web server với nhiều kết nối HTTP
-- **Phân biệt với SYN Flood:** PPS thấp hơn (300-3000 vs >3000)
 
-### s05: DNS Amplification
-```bash
-hping3 --udp -p 53 --rand-source -i u500 DNS_SERVER
-```
-- `--rand-source`: giả mạo IP nguồn (spoof victim IP)
-- **Mục đích:** Gửi DNS query nhỏ (60B) → DNS trả lời lớn (3000B) → khuếch đại 50x
-- **Tại sao hiệu quả:** Attacker gửi 1 Mbps → victim nhận 50 Mbps
-- **Detection:** Controller packet_in detect (UDP + port 53 + nhiều IP nguồn giả)
-- **Dấu hiệu:** entropy >8, UDP protocol, port 53
+**Rate-Limit Module (`mitigation.py`, dòng 24-42):**
+```python
+# Bước 1: Tạo Meter giới hạn 1000 pps
+band = OFPMeterBandDrop(rate=1000, burst=100)  # Vượt 1000 pps → DROP
+MeterMod(command=ADD, flags=PKTPS, meter_id=mid, bands=[band])
 
-### s06: IP Spoof Flood
-```bash
-hping3 --rand-source -S -p 80 -i u500 VICTIM
+# Bước 2: Cài flow rule sử dụng meter
+instructions = [InstructionMeter(meter_id),     # Áp dụng meter
+                InstructionActions(OUTPUT:NORMAL)] # Cho phép traffic dưới ngưỡng
+FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 ```
-- **Mục đích:** SYN flood với IP giả → victim không biết ai tấn công
-- **Detection:** Packet_in monitor thấy nhiều IP lạ từ cùng 1 MAC
-- **Dấu hiệu:** entropy >8, TCP protocol, 1 MAC nhiều IP
-
-### s07: Slowloris
-```bash
-hping3 -S -p 80 -i u10000 VICTIM
-```
-- `-i u10000`: 1 gói mỗi 10ms = ~100 pps (CHẬM)
-- **Mục đích:** Giữ nhiều kết nối HTTP mở cùng lúc, không bao giờ gửi xong request
-- **Tại sao nguy hiểm:** PPS thấp nhưng chiếm hết connection pool của web server
-- **Dấu hiệu:** entropy ~0, pps 30-300, tcp_pct >0.5
-
-### s08: Flash Crowd (KHÔNG PHẢI TẤN CÔNG)
-```bash
-# 6 người dùng hợp pháp truy cập đồng thời
-hping3 -a 10.0.4.10 -S -p 80   -i u50000 VICTIM &  # User 1: web
-hping3 -a 10.0.4.11 -S -p 443  -i u50000 VICTIM &  # User 2: HTTPS
-hping3 -a 10.0.4.12 -S -p 8080 -i u50000 VICTIM &  # User 3: API
-hping3 -a 10.0.4.13 -S -p 80   -i u50000 VICTIM &  # User 4: web
-hping3 -a 10.0.1.20 -S -p 443  -i u50000 VICTIM &  # User 5: HTTPS
-hping3 -a 10.0.3.10 -S -p 3306 -i u50000 VICTIM &  # User 6: DB
-```
-- **Mục đích:** Mô phỏng traffic hợp pháp tăng đột biến (sale, event...)
-- **Tại sao KHÔNG bị chặn:**
-  - Tất cả IP nguồn đều nằm trong whitelist
-  - PPS mỗi nguồn rất thấp (~20 pps)
-  - Nhiều port khác nhau (entropy port cao)
-  - syn_pct thấp (nhiều loại traffic)
 
 ---
 
-## 6. Feature Extraction (feature_extraction.py)
+## 7. Logic các kịch bản tấn công
 
-Trích xuất features từ pcap file dùng sliding window:
+### s01: SYN Flood — `hping3 -S -p 80 --flood VICTIM`
+- `--flood`: gửi nhanh nhất có thể (>3000 pps)
+- **Detection:** Entropy ~0 (1 IP) + PPS >3000 + tcp_pct ~1.0 → match signature s01
 
-| Feature | Công thức | Ý nghĩa |
-|---------|-----------|---------|
-| entropy_src_ip | `H(src_ip)` | Độ phân tán IP nguồn |
-| entropy_dst_ip | `H(dst_ip)` | Độ phân tán IP đích |
-| entropy_dst_port | `H(dst_port)` | Độ phân tán port đích |
-| entropy_renyi_src | `H₂(src_ip)` | Rényi bậc 2 của IP nguồn |
-| pps | `n_packets / window` | Packets per second |
-| bps | `total_bytes × 8 / window` | Bits per second |
-| syn_pct | `syn_count / total` | Tỷ lệ gói SYN |
-| icmp_pct | `icmp_count / total` | Tỷ lệ gói ICMP |
-| new_flows_per_sec | `new_5tuple / window` | Luồng mới/giây |
-| avg_pkt_size | `total_bytes / n_packets` | Kích thước gói trung bình |
+### s02: UDP Flood — `hping3 --udp -p 53 --flood VICTIM`
+- **Detection:** Entropy ~0 + PPS >500 + udp_pct >0.5 → match signature s02
 
-**Sliding window:** window=1s, slide=0.5s → overlap 50% để không bỏ sót
+### s03: ICMP Flood — `hping3 -1 --flood VICTIM`
+- **Detection:** PPS >500 + icmp_pct >0.5 → match signature s03
+
+### s04: HTTP Flood — `hping3 -S -p 80 -i u500 VICTIM`
+- `-i u500`: 2000 pps (chậm hơn SYN flood)
+- **Detection:** tcp_pct >0.8 + 300 < PPS < 3000 → match s04 (không phải s01)
+
+### s05: DNS Amplification — `hping3 --udp -p 53 --rand-source -i u500 DNS`
+- `--rand-source`: giả mạo IP nguồn → entropy rất cao
+- **Detection:** Controller packet_in thấy UDP + port 53 + nhiều IP giả → s05_dns_ampl
+- **Block:** MAC (vì IP giả)
+
+### s06: IP Spoof — `hping3 --rand-source -S -p 80 -i u500 VICTIM`
+- **Detection:** Controller packet_in thấy TCP + port 80 + nhiều IP giả → s06_ip_spoof
+- **Block:** MAC
+
+### s07: Slowloris — `hping3 -S -p 80 -i u10000 VICTIM`
+- `-i u10000`: chỉ 100 pps (tấn công chậm)
+- **Detection:** tcp_pct >0.5 + 30 < PPS < 300 + entropy <1.5 → match s07
+
+### s08: Flash Crowd — 6 user hợp pháp, mỗi user 20 pps
+- **KHÔNG bị chặn** vì: IP trong whitelist, PPS thấp, nhiều port, entropy vừa phải
 
 ---
 
-## 7. Dashboard (dashboard.py)
+## 8. Bảng tóm tắt
 
-**4 trang:**
-- `/` — Biểu đồ Entropy + PPS realtime, trạng thái hệ thống, IP/MAC bị chặn
-- `/alerts` — Danh sách cảnh báo, chặn/gỡ chặn IP thủ công
-- `/flows` — OpenFlow rules trên switch s2
-- `/api/debug` — Raw data từ Ryu controller
-
-**Cập nhật:** Mỗi 2 giây fetch `/api/stats` → lấy entropy, pps, attack_status, blocked_ips từ Ryu
+| Kịch bản | Entropy | PPS | Phát hiện bởi | Chặn |
+|----------|---------|-----|---------------|------|
+| s01 SYN Flood | ~0 | >3000 | Entropy + Stats + Signature | IP |
+| s02 UDP Flood | ~0 | >500 | Entropy + Stats + Signature | IP |
+| s03 ICMP Flood | ~0 | >500 | Stats + Signature | IP |
+| s04 HTTP Flood | ~0 | 300-3000 | Entropy + Stats + Signature | IP |
+| s05 DNS Ampl | ~9 | >500 | Packet_in (UDP:53 + spoof) | MAC |
+| s06 IP Spoof | ~9 | >500 | Packet_in (TCP + spoof) | MAC |
+| s07 Slowloris | ~0 | 30-300 | Stats + Signature | IP |
+| s08 Flash Crowd | ~2.5 | ~120 | **Không phát hiện** | **Không** |
 
 ---
 
-## 8. Tham khảo
+## 9. Tham khảo
 
 | Viện dẫn | Tác giả | Nội dung |
 |----------|---------|----------|
 | Shannon 1948 | C.E. Shannon | "A Mathematical Theory of Communication" — Shannon Entropy |
 | Rényi 1961 | A. Rényi | "On Measures of Entropy and Information" — Rényi Entropy |
-| Page 1954 | E.S. Page | "Continuous Inspection Schemes" — CUSUM algorithm |
+| Page 1954 | E.S. Page | "Continuous Inspection Schemes" — Thuật toán CUSUM |
 | Kumar 2018 | A1 | SDN-based DDoS detection using entropy |
 | Bhuyan 2015 | B4 | Network anomaly detection using entropy-based approach |
 | RFC 4732 | IETF | "Internet Denial-of-Service Considerations" |
