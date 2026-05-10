@@ -6,10 +6,35 @@ from collections import Counter
  
  
 try:
-    from scapy.all import PcapReader, IP, TCP, UDP, ICMP
+    from scapy.all import PcapReader, IP, TCP, UDP, ICMP, raw
 except ImportError:
     print("[ERROR] Scapy chua cai. Chay: pip3 install scapy")
     sys.exit(1)
+ 
+# Import SLL layer de scapy co the parse pcap tu "tcpdump -i any"
+try:
+    from scapy.layers.l2 import CookedLinux
+except ImportError:
+    pass
+ 
+ 
+def _get_ip(pkt):
+    """Trich IP layer tu packet, ho tro ca Ethernet va SLL (cooked capture)."""
+    # Cach 1: Scapy tu parse duoc IP layer
+    if pkt.haslayer(IP):
+        return pkt[IP]
+    # Cach 2: Thu parse payload truc tiep (cho SLL tren scapy cu)
+    try:
+        raw_bytes = bytes(pkt)
+        # Tim IPv4 header (version=4) trong 20 bytes dau
+        for offset in range(min(len(raw_bytes) - 20, 30)):
+            if (raw_bytes[offset] >> 4) == 4:
+                ip = IP(raw_bytes[offset:])
+                if ip.version == 4 and ip.ihl >= 5:
+                    return ip
+    except Exception:
+        pass
+    return None
  
  
 def shannon(items):
@@ -52,13 +77,20 @@ def extract(pcap_path, out_csv, win=1.0, slide=0.5):
     # Doc tat ca IP packet vao memory
     pkts = []
     count = 0
+    skipped = 0
     with PcapReader(pcap_path) as reader:
         for pkt in reader:
             count += 1
             if count % 50000 == 0:
-                print(f"  Doc {count} goi...")
-            if pkt.haslayer(IP):
-                pkts.append((float(pkt.time), pkt))
+                print(f"  Doc {count} goi... ({len(pkts)} IP)")
+            ip = _get_ip(pkt)
+            if ip is not None:
+                pkts.append((float(pkt.time), ip))
+            else:
+                skipped += 1
+ 
+    if skipped > 0:
+        print(f"  [INFO] Bo qua {skipped}/{count} goi khong co IP")
  
     if not pkts:
         print("[ERROR] Khong co IP packet nao trong pcap.")
@@ -101,9 +133,9 @@ def extract(pcap_path, out_csv, win=1.0, slide=0.5):
             n        = len(window)
             byte_sum = sum(len(p) for p in window)
  
-            # Features IP
-            src_ips = [p[IP].src for p in window]
-            dst_ips = [p[IP].dst for p in window]
+            # Features IP (p la IP layer truc tiep)
+            src_ips = [p.src for p in window]
+            dst_ips = [p.dst for p in window]
  
             # Features port
             dst_ports = []
@@ -125,9 +157,9 @@ def extract(pcap_path, out_csv, win=1.0, slide=0.5):
             # New flows (5-tuple: src_ip, dst_ip, proto, src_port, dst_port)
             flows_now = set()
             for p in window:
-                src_ip = p[IP].src
-                dst_ip = p[IP].dst
-                proto  = p[IP].proto
+                src_ip = p.src
+                dst_ip = p.dst
+                proto  = p.proto
                 sport  = p[TCP].sport if p.haslayer(TCP) else (p[UDP].sport if p.haslayer(UDP) else 0)
                 dport  = p[TCP].dport if p.haslayer(TCP) else (p[UDP].dport if p.haslayer(UDP) else 0)
                 flows_now.add((src_ip, dst_ip, proto, sport, dport))

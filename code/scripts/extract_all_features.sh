@@ -8,9 +8,16 @@ for pcap in datasets/*.pcap; do
     name=$(basename "$pcap" .pcap)
     csv="datasets/features/${name}.csv"
     
+    # Chi skip neu CSV da co va co nhieu hon 1 dong (header)
     if [ -f "$csv" ]; then
-        echo "[SKIP] $csv da ton tai ($(wc -l < "$csv") dong)"
-        continue
+        lines=$(wc -l < "$csv")
+        if [ "$lines" -gt 1 ]; then
+            echo "[SKIP] $csv da ton tai ($lines dong)"
+            continue
+        else
+            echo "[REDO] $csv chi co header, chay lai..."
+            rm -f "$csv"
+        fi
     fi
     
     size=$(stat -c%s "$pcap" 2>/dev/null || stat -f%z "$pcap" 2>/dev/null)
