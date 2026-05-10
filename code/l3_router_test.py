@@ -326,7 +326,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             proto_num = p_ip.proto  # 1=ICMP, 6=TCP, 17=UDP
             match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
             if p_ip.src in self.WHITELIST_SRC:
-                self.add_flow(dp, 10, match, actions, idle_timeout=30)
+                # Whitelist: flow vinh vien (idle_timeout=0) de khong can pingall lai
+                self.add_flow(dp, 10, match, actions, idle_timeout=0)
             else:
                 self.add_flow(dp, 5, match, actions, idle_timeout=5)
 

@@ -171,35 +171,36 @@ def main():
                     n_rules += len(sig_hits); evidence.extend(sig_hits)
                     attack_type = sig_hits[0].get("attack", "known_signature")
                 elif n_rules > 0:
-                    # Signature chua match nhung entropy/stats bat thuong
-                    # -> suy doan attack type tu features de log co y nghia hon
+                    # Fallback: suy doan attack type tu features kha dung
                     if features.get("icmp_pct", 0) > 0.3:
                         attack_type = "icmp_flood"
-                    elif features.get("syn_pct", 0) > 0.4:
-                        attack_type = "syn_flood"
+                    elif features.get("udp_pct", 0) > 0.3:
+                        attack_type = "udp_flood"
+                    elif features.get("tcp_pct", 0) > 0.3:
+                        attack_type = "tcp_flood"
                     elif features.get("entropy_src", 5) < 1.0:
                         attack_type = "single_src_flood"
-                    elif features.get("entropy_src", 0) > 4.0:
+                    elif features.get("entropy_src", 0) > 3.5:
                         attack_type = "spoofed_flood"
                 
-                # --- GUARD: Chi emit alert khi traffic du lon ---
-                # Dung PPS (tu tong packet_count) thay vi total_src_pkts_delta
-                # vi attacker (non-whitelist) khong co flow voi ipv4_src -> bi an trong per-IP count
+                # --- GUARD ---
+                total_pkts = features.get("_total_pkts_delta", 0)
                 current_pps = features.get("pps", 0)
+                has_traffic = total_pkts > 30 or current_pps > 50
                 
                 if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
                     global _warmup_logged
                     if not _warmup_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [WARMUP] Bo qua alert trong {WARMUP_CYCLES} chu ky dau...")
                         _warmup_logged = True
-                elif n_rules > 0 and current_pps < MIN_PKTS_FOR_ALERT:
+                elif n_rules > 0 and not has_traffic:
                     global _skip_logged
                     if not _skip_logged:
-                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] PPS qua thap ({int(current_pps)} < {MIN_PKTS_FOR_ALERT}) -> khong alert")
+                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap (pkts={total_pkts}, pps={int(current_pps)}) -> khong alert")
                         _skip_logged = True
                 elif n_rules > 0:
-                    _skip_logged = False  # Reset khi co alert that
-                    print(f"[{time.strftime('%H:%M:%S')}] >>> PHAT HIEN: {attack_type} (entropy={features.get('entropy_src', '?')}, {n_rules} rules matched)")
+                    _skip_logged = False
+                    print(f"[{time.strftime('%H:%M:%S')}] >>> PHAT HIEN: {attack_type} | entropy={features.get('entropy_src','?')} icmp={features.get('icmp_pct',0)} tcp={features.get('tcp_pct',0)} udp={features.get('udp_pct',0)} | {n_rules} rules")
                     alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
             except Exception as e:
                 print(f"[detector] Loi: {e}", flush=True)
