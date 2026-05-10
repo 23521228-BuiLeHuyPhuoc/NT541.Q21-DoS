@@ -45,9 +45,6 @@ def start_ryu():
     return p, ryu_out
 
 def start_topology():
-    print("[*] Dang don dep Mininet...")
-    subprocess.run(["sudo", "mn", "-c"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    
     print("[*] Dang khoi dong Topology V4...")
     p = subprocess.Popen(["sudo", "python3", "code/topology/topology_v4.py"],
                          stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -117,8 +114,12 @@ def run(scenario_id):
 
     print(f"\n========== BAT DAU KICH BAN: {scenario_id} ==========")
 
-    # THU TU QUAN TRONG: Ryu TRUOC -> Topology SAU
-    # De OVS switches ket noi controller ngay khi khoi dong
+    # THU TU: mn -c -> Ryu -> Topology
+    # mn -c phai chay TRUOC Ryu vi no kill ca controller processes
+    print("[*] Dang don dep Mininet...")
+    subprocess.run(["sudo", "mn", "-c"], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(1)
+
     ryu, ryu_out = start_ryu()
     mn = start_topology()
     det, det_out = start_detector()
