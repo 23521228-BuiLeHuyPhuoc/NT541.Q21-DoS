@@ -2,28 +2,23 @@
 VICTIM="10.0.2.10"
 DURATION=20
 
-echo "Bat dau Flash Crowd vao $VICTIM trong $DURATION giay..."
-echo "Mo phong nhieu nguoi dung hop phap truy cap cung luc"
-echo "Kich ban nay KHONG nen bi phat hien la tan cong"
+echo "Flash Crowd: gui traffic hop phap vao $VICTIM trong $DURATION giay..."
+echo "HUONG DAN: Chay dong thoi tu nhieu host de mo phong flash crowd that:"
+echo "  mininet> h_pc1 bash code/attack_scripts/s08_flash_crowd.sh &"
+echo "  mininet> h_pc2 bash code/attack_scripts/s08_flash_crowd.sh &"
+echo "  mininet> h_pc3 bash code/attack_scripts/s08_flash_crowd.sh &"
+echo "  mininet> h_pc4 bash code/attack_scripts/s08_flash_crowd.sh &"
+echo ""
 
-# Flash crowd = nhieu nguon khac nhau, PPS vua phai, nhieu port khac nhau
-# Dung curl/wget thay vi hping3 de tao traffic HTTP binh thuong
-# Moi host gui HTTP request voi toc do vua phai (khong flood)
-
-# Host h_att1 da chay script nay, nen ta dung chinh no gui traffic nhe
-# Gui HTTP requests binh thuong (khong phai SYN flood) voi toc do thap
-timeout $DURATION hping3 -p 80 -i u5000 --syn $VICTIM &
+# Flash crowd = nhieu nguoi dung hop phap truy cap cung luc
+# Moi host gui traffic THAP (~20-30 pps) de KHONG giong flood
+# Khi nhieu host chay cung luc -> entropy CAO -> he thong nhan dien la flash crowd
+timeout $DURATION hping3 -S -p 80 -i u50000 $VICTIM &
 PID1=$!
-sleep 0.5
-timeout $DURATION hping3 -p 443 -i u5000 --syn $VICTIM &
+sleep 0.3
+timeout $DURATION hping3 -S -p 443 -i u50000 $VICTIM &
 PID2=$!
-sleep 0.5
-timeout $DURATION hping3 -p 8080 -i u5000 --syn $VICTIM &
-PID3=$!
-sleep 0.5
-timeout $DURATION hping3 -p 8443 -i u5000 --syn $VICTIM &
-PID4=$!
 
 sleep $DURATION
-kill $PID1 $PID2 $PID3 $PID4 2>/dev/null
-echo "Hoan tat mo phong Flash Crowd!"
+kill $PID1 $PID2 2>/dev/null
+echo "Hoan tat Flash Crowd tu $(hostname)!"
