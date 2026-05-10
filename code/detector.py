@@ -212,16 +212,21 @@ def main():
                     attack_type = sig_hits[0].get("attack", "known_signature")
                 elif n_rules > 0:
                     # Fallback: suy doan attack type tu features kha dung
+                    pps_val = features.get("pps", 0)
                     if features.get("icmp_pct", 0) > 0.3:
                         attack_type = "icmp_flood"
                     elif features.get("udp_pct", 0) > 0.3:
                         attack_type = "udp_flood"
-                    elif features.get("tcp_pct", 0) > 0.3:
+                    elif features.get("tcp_pct", 0) > 0.3 and pps_val > 500:
                         attack_type = "tcp_flood"
-                    elif features.get("entropy_src", 5) < 1.0:
+                    elif features.get("entropy_src", 5) < 1.0 and pps_val > 500:
                         attack_type = "single_src_flood"
                     elif features.get("entropy_src", 0) > 3.5:
                         attack_type = "spoofed_flood"
+                    else:
+                        # Traffic co anomaly nhung PPS thap -> co the la flash crowd hoac traffic binh thuong
+                        # Khong alert, chi ghi nhan
+                        n_rules = 0  # Reset de khong trigger alert
                 
                 # --- GUARD: Chi alert khi traffic du lon ---
                 # Pingall: ~16-40 pkts/cycle, attack: 4000+ pkts/cycle
