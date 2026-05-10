@@ -22,10 +22,17 @@ class EntropyDetector:
         self.recent = deque(maxlen=adaptive_window_sec)
 
     def check(self, features):
-        alerts = []
+        alerts =[]
+        if features.get('entropy_src_ip', 0) > 4.0 and \
+           features.get('pps', 0) > self.mu.get('pps', 0):
+            return {"anomaly": False, "alerts":[], "reason": "flash_crowd_pattern"}
+        
+
         for key in ('entropy_src_ip', 'entropy_dst_port', 'entropy_renyi_src'):
             v = features.get(key, 0)
-            mu, sig = self.mu.get(key, 0), self.sigma.get(key, 1)
+            mu_key = 'entropy_dport' if 'dst_port' in key else 'entropy_src'
+            
+            mu, sig = self.mu.get(mu_key, 0), self.sigma.get(mu_key, 1)
             if abs(v - mu) > self.k * sig:
                 alerts.append({"source": "entropy", "feature": key,
                                "value": v, "deviation": (v-mu)/sig})
