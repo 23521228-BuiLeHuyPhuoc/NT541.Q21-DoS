@@ -90,10 +90,12 @@ class L3RouterExtended(SimpleRouterEntropy):
 
         if action == 'Logged':
             self.logger.warning(f"[MITIGATION] Cap 1/3: GHI NHAN — {src} ({attack})")
+            self.attack_status = 1  # Dashboard: dang bi tan cong
 
         elif action == 'Rate-Limited':
             self.logger.warning(f"[MITIGATION] Cap 2/3: RATE-LIMIT — {src} (1000 pps)")
             self.ratelimit.apply(dp, src, pps=1000)
+            self.attack_status = 1
 
         else:  # Blocked
             if is_spoof:
@@ -101,13 +103,29 @@ class L3RouterExtended(SimpleRouterEntropy):
                 if src_mac:
                     self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK MAC — {src_mac} ({attack}, 20s)")
                     self._block_mac(dp, src_mac, timeout=20)
+                    self.blocked_macs.add(src_mac)
                 else:
                     self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK IP — {src} ({attack}, 20s)")
                     self.block.apply(dp, src, timeout=20)
             else:
                 self.logger.warning(f"[MITIGATION] Cap 3/3: CHAN IP — {src} ({attack}, 20s)")
                 self.block.apply(dp, src, timeout=20)
+
+            self.blocked_ips.add(src)
             self.blacklist.add(src, ttl=20)
+            self.attack_status = 1
+
+            # Tu dong go chan va reset trang thai sau 20s
+            from ryu.lib import hub
+            def _auto_unblock():
+                hub.sleep(20)
+                self.blocked_ips.discard(src)
+                if is_spoof and src_mac:
+                    self.blocked_macs.discard(src_mac)
+                if not self.blocked_ips and not self.blocked_macs:
+                    self.attack_status = 0
+                self.logger.info(f"[MITIGATION] Da go chan {src} sau 20s")
+            hub.spawn(_auto_unblock)
 
     def _find_mac_for_ip(self, ip):
         """Tim MAC address tuong ung voi IP tu ARP table."""
