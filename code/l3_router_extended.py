@@ -74,7 +74,7 @@ class L3RouterExtended(SimpleRouterEntropy):
         if elapsed < self._GRACE_PERIOD:
             return
 
-        if src in self.WHITELIST_SRC:
+        if src in self.WHITELIST_SRC and payload.get('attack') != 'manual_block':
             return
 
         attack = payload.get('attack', 'unknown')

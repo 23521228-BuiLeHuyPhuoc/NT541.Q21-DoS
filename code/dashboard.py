@@ -135,13 +135,14 @@ def manual_block():
         if not ip:
             return jsonify({"ok": False, "error": "Thieu thong tin IP"})
             
-        # Theo policy.yaml, he thong yeu cau threshold=3 moi thuc hien Block (cap do 3)
-        # Do do chung ta gui ep 3 requests lien tiep sang Ryu Controller de dat muc Block ngay lap tuc.
-        for _ in range(3):
+        # Gui 3 cap alert (Logged -> Rate-Limited -> Blocked) de trigger full escalation
+        actions = ['Logged', 'Rate-Limited', 'Blocked']
+        for action in actions:
             requests.post('http://127.0.0.1:8081/api/alert',
-                          json={"src_ip": ip, "attack": "manual_block", "severity": "CRITICAL"}, 
+                          json={"src_ip": ip, "attack": "manual_block",
+                                "severity": "CRITICAL", "action": action},
                           timeout=1)
-            time.sleep(0.1)
+            time.sleep(0.3)
             
         return jsonify({"ok": True})
     except Exception as e:
