@@ -99,15 +99,15 @@ class L3RouterExtended(SimpleRouterEntropy):
             if is_spoof:
                 src_mac = self._find_mac_for_ip(src)
                 if src_mac:
-                    self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK MAC — {src_mac} ({attack}, 30s)")
-                    self._block_mac(dp, src_mac, timeout=30)
+                    self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK MAC — {src_mac} ({attack}, 15s)")
+                    self._block_mac(dp, src_mac, timeout=15)
                 else:
-                    self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK IP — {src} ({attack}, 30s)")
-                    self.block.apply(dp, src, timeout=30)
+                    self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK IP — {src} ({attack}, 15s)")
+                    self.block.apply(dp, src, timeout=15)
             else:
-                self.logger.warning(f"[MITIGATION] Cap 3/3: CHAN IP — {src} ({attack}, 30s)")
-                self.block.apply(dp, src, timeout=30)
-            self.blacklist.add(src, ttl=30)
+                self.logger.warning(f"[MITIGATION] Cap 3/3: CHAN IP — {src} ({attack}, 15s)")
+                self.block.apply(dp, src, timeout=15)
+            self.blacklist.add(src, ttl=15)
 
     def _find_mac_for_ip(self, ip):
         """Tim MAC address tuong ung voi IP tu ARP table."""
