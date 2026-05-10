@@ -154,6 +154,43 @@ class AlertAPI(ControllerBase):
         self.router.handle_alert(payload)
         return Response(content_type='application/json', body=b'{"ok":true}')
 
+    @route('unblock', '/api/unblock', methods=['POST'])
+    def receive_unblock(self, req, **kw):
+        payload = json.loads(req.body)
+        src = payload.get('src_ip', '')
+        if not src:
+            return Response(content_type='application/json', body=b'{"ok":false}')
+
+        # Xoa khoi danh sach blocked
+        self.router.blocked_ips.discard(src)
+        self.router.blacklist.remove(src) if hasattr(self.router.blacklist, 'remove') else None
+
+        # Xoa flow block tren switch s2
+        dp = self.router.dps.get(2)
+        if dp:
+            from ryu.ofproto import ofproto_v1_3 as ofp13
+            parser = dp.ofproto_parser
+            # Xoa flow match ipv4_src = src
+            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src)
+            mod = parser.OFPFlowMod(datapath=dp, command=dp.ofproto.OFPFC_DELETE,
+                                     out_port=dp.ofproto.OFPP_ANY, out_group=dp.ofproto.OFPG_ANY,
+                                     match=match)
+            dp.send_msg(mod)
+
+            # Xoa flow match ipv4_dst = src (rate-limit)
+            match2 = parser.OFPMatch(eth_type=0x0800, ipv4_dst=src)
+            mod2 = parser.OFPFlowMod(datapath=dp, command=dp.ofproto.OFPFC_DELETE,
+                                      out_port=dp.ofproto.OFPP_ANY, out_group=dp.ofproto.OFPG_ANY,
+                                      match=match2)
+            dp.send_msg(mod2)
+
+        # Reset trang thai neu khong con ai bi chan
+        if not self.router.blocked_ips and not self.router.blocked_macs:
+            self.router.attack_status = 0
+
+        self.router.logger.info(f"[UNBLOCK] Da go chan IP {src}")
+        return Response(content_type='application/json', body=b'{"ok":true}')
+
     @route('entropy', '/api/entropy', methods=['GET'])
     def get_entropy(self, req, **kw):
         """Expose entropy real-time cho dashboard — doc tu detector.py output, fallback tu controller."""

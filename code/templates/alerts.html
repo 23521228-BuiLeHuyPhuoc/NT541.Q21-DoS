@@ -13,9 +13,13 @@
         th { background: #f4f4f4; }
         .CRITICAL { color: red; font-weight: bold; }
         .WARN { color: orange; font-weight: bold; }
-        .block-box { margin-bottom: 15px; padding: 10px; border: 1px solid #ccc; display: inline-block; }
-        .block-box input { padding: 4px; }
-        .block-box button { background: #cc0000; color: white; border: none; padding: 5px 12px; cursor: pointer; }
+        .actions-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .action-box { padding: 10px; border: 1px solid #ccc; display: inline-block; }
+        .action-box input { padding: 4px; }
+        .action-box button { border: none; padding: 5px 12px; cursor: pointer; color: white; }
+        .btn-block { background: #cc0000; }
+        .btn-unblock { background: #009900; }
+        .result { font-weight: bold; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -24,11 +28,19 @@
         <a href="/">Dashboard</a> | <a href="/alerts">Alerts</a> | <a href="/flows">Flows</a>
     </div>
 
-    <div class="block-box">
-        <b>Chan IP thu cong:</b>
-        <input type="text" id="blockIpInput" placeholder="VD: 10.0.1.10">
-        <button onclick="manualBlock()">Chan</button>
-        <span id="blockResult" style="color:red;"></span>
+    <div class="actions-row">
+        <div class="action-box">
+            <b>Chan IP:</b>
+            <input type="text" id="blockIpInput" placeholder="VD: 10.0.1.10">
+            <button class="btn-block" onclick="manualBlock()">Chan</button>
+            <span id="blockResult" class="result" style="color:red;"></span>
+        </div>
+        <div class="action-box">
+            <b>Go chan IP:</b>
+            <input type="text" id="unblockIpInput" placeholder="VD: 10.0.1.10">
+            <button class="btn-unblock" onclick="manualUnblock()">Go chan</button>
+            <span id="unblockResult" class="result" style="color:green;"></span>
+        </div>
     </div>
 
     <table>
@@ -56,6 +68,18 @@
                 body: JSON.stringify({src_ip: ip})
             }).then(r=>r.json()).then(d=>{
                 document.getElementById('blockResult').innerText = d.ok ? "Da chan " + ip : "Loi: " + d.error;
+            }).catch(()=>alert("Loi ket noi!"));
+        }
+
+        function manualUnblock() {
+            const ip = document.getElementById('unblockIpInput').value;
+            if(!ip) return alert("Nhap IP!");
+            fetch('/api/unblock', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({src_ip: ip})
+            }).then(r=>r.json()).then(d=>{
+                document.getElementById('unblockResult').innerText = d.ok ? "Da go chan " + ip : "Loi: " + d.error;
             }).catch(()=>alert("Loi ket noi!"));
         }
     </script>

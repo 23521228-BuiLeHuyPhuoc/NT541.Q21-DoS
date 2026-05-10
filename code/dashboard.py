@@ -149,6 +149,22 @@ def manual_block():
         return jsonify({"ok": False, "error": str(e)})
 
 # ==========================================
+# 5. ENDPOINT MANUAL UNBLOCK (Go chan IP thu cong)
+# ==========================================
+@app.route('/api/unblock', methods=['POST'])
+def manual_unblock():
+    try:
+        ip = request.json['src_ip']
+        if not ip:
+            return jsonify({"ok": False, "error": "Thieu thong tin IP"})
+
+        requests.post('http://127.0.0.1:8081/api/unblock',
+                      json={"src_ip": ip}, timeout=1)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+# ==========================================
 # 5. DEBUG - XEM RAW DATA TU RYU
 # ==========================================
 @app.route('/api/debug')
