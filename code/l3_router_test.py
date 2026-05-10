@@ -320,10 +320,15 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 parser.OFPActionOutput(out_port)
             ]
 
-            # Chi cai flow cho whitelist IP, non-whitelist luon di qua controller
+            # Cai flow cho TAT CA IP de flow stats ghi nhan traffic chinh xac.
+            # Whitelist: timeout dai (30s) - traffic binh thuong
+            # Non-whitelist: timeout ngan (5s) - de detector.py thay duoc attack traffic
+            # Truoc day chi cai cho whitelist -> attacker traffic bi an trong flow stats!
+            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst)
             if p_ip.src in self.WHITELIST_SRC:
-                match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst)
                 self.add_flow(dp, 10, match, actions, idle_timeout=30)
+            else:
+                self.add_flow(dp, 5, match, actions, idle_timeout=5)
 
             dp.send_msg(parser.OFPPacketOut(
                 datapath=dp, buffer_id=msg.buffer_id,
