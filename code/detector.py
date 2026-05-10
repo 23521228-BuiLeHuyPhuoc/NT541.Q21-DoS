@@ -257,7 +257,7 @@ def main():
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 3/3: CHAN IP - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=3)
 
-                        print(f"[{time.strftime('%H:%M:%S')}] Da chan {src_ip}. Tu dong go chan sau 15s.")
+                        print(f"[{time.strftime('%H:%M:%S')}] Da chan {src_ip}. Tu dong go chan sau 30s.")
 
                     _attack_count += 1
                 else:
