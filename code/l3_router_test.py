@@ -323,13 +323,10 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
 
             # Cai flow cho TAT CA IP de flow stats ghi nhan traffic chinh xac.
             # Them ip_proto vao match de detector.py doc duoc icmp_pct/syn_pct/udp_pct
+            # TAT CA flows deu permanent (idle_timeout=0) de pingall luon nhanh sau attack
             proto_num = p_ip.proto  # 1=ICMP, 6=TCP, 17=UDP
             match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
-            if p_ip.src in self.WHITELIST_SRC:
-                # Whitelist: flow vinh vien (idle_timeout=0) de khong can pingall lai
-                self.add_flow(dp, 10, match, actions, idle_timeout=0)
-            else:
-                self.add_flow(dp, 5, match, actions, idle_timeout=5)
+            self.add_flow(dp, 5, match, actions, idle_timeout=0)
 
             dp.send_msg(parser.OFPPacketOut(
                 datapath=dp, buffer_id=msg.buffer_id,
