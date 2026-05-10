@@ -254,7 +254,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             return
 
         if dp.id != 2:
-            return
+            # Cac switch khac (s1, s3, s4, s5) dung L2 forwarding cua SimpleSwitch13
+            return super(SimpleRouterEntropy, self)._packet_in_handler(ev)
 
         p_arp = pkt.get_protocol(arp.arp)
         p_ip = pkt.get_protocol(ipv4.ipv4)
