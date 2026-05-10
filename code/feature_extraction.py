@@ -19,21 +19,31 @@ except ImportError:
  
  
 def _get_ip(pkt):
-    """Trich IP layer tu packet, ho tro ca Ethernet va SLL (cooked capture)."""
-    # Cach 1: Scapy tu parse duoc IP layer (Ethernet pcap)
+    """Trich IP layer tu packet, ho tro Ethernet, SLL va SLL2 (cooked capture)."""
+    # Cach 1: Scapy tu parse duoc IP layer (Ethernet pcap, hoac scapy moi)
     if pkt.haslayer(IP):
         return pkt[IP]
-    # Cach 2: Parse SLL header thu cong (16 bytes header, protocol o offset 14-15)
     try:
         raw_bytes = bytes(pkt)
-        if len(raw_bytes) < 36:  # 16 SLL + 20 IP minimum
-            return None
-        # Kiem tra protocol type = 0x0800 (IPv4) trong SLL header
-        proto = (raw_bytes[14] << 8) | raw_bytes[15]
-        if proto == 0x0800:
-            ip = IP(raw_bytes[16:])
-            if ip.version == 4 and ip.ihl >= 5:
-                return ip
+        rlen = len(raw_bytes)
+        # Cach 2: SLL header (linktype 113) - 16 bytes, protocol o offset 14-15
+        if rlen >= 36:
+            proto_sll = (raw_bytes[14] << 8) | raw_bytes[15]
+            if proto_sll == 0x0800:
+                ip = IP(raw_bytes[16:])
+                if ip.version == 4 and ip.ihl >= 5:
+                    return ip
+        # Cach 3: SLL2 header (linktype 276) - 20 bytes, protocol o offset 0-1
+        if rlen >= 40:
+            proto_sll2 = (raw_bytes[0] << 8) | raw_bytes[1]
+            if proto_sll2 == 0x0800:
+                ip = IP(raw_bytes[20:])
+                if ip.version == 4 and ip.ihl >= 5:
+                    return ip
+        # Cach 4: Thu payload cua scapy (truong hop scapy biet layer nhung khong link IP)
+        if hasattr(pkt, 'payload') and pkt.payload:
+            if hasattr(pkt.payload, 'version') and pkt.payload.version == 4:
+                return pkt.payload
     except Exception:
         pass
     return None
