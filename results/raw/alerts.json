@@ -1,0 +1,49 @@
+{"timestamp": 1778386968.835145, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_src_ip", "value": 3.4, "deviation": 3.4}, {"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386968.8369694, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "action": "Logged"}
+{"timestamp": 1778386968.8371205, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "action": "Logged"}
+{"timestamp": 1778386968.8372285, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "action": "Logged"}
+{"timestamp": 1778386968.8373313, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "action": "Logged"}
+{"timestamp": 1778386968.837429, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "action": "Logged"}
+{"timestamp": 1778386973.937428, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_src_ip", "value": 3.4, "deviation": 3.4}, {"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386973.9434197, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "WARN", "n_rules": 2, "action": "Rate-Limited"}
+{"timestamp": 1778386973.9445827, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "WARN", "n_rules": 2, "action": "Rate-Limited"}
+{"timestamp": 1778386973.9456618, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "WARN", "n_rules": 2, "action": "Rate-Limited"}
+{"timestamp": 1778386973.9467282, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "WARN", "n_rules": 2, "action": "Rate-Limited"}
+{"timestamp": 1778386973.9476378, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "WARN", "n_rules": 2, "action": "Rate-Limited"}
+{"timestamp": 1778386979.0738225, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386979.08092, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386979.0823636, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386979.0832725, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386979.0842173, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386979.0848665, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386984.1881156, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386984.190278, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386984.1906266, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386984.1908782, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386984.1911855, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386984.1914487, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386989.2907488, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386989.2964146, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386989.297045, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386989.2975304, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386989.298073, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386989.2986069, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386994.3716133, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386994.373886, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386994.374228, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386994.3744671, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386994.3747418, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386994.3749783, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386996.3931084, "src_ip": "10.0.1.10", "attack": "high_pps_flood", "severity": "WARN", "n_rules": 2, "action": "Blocked"}
+{"timestamp": 1778386999.4590604, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778386999.4651463, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386999.466036, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386999.4669359, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386999.4677067, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778386999.4716403, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778387004.5980785, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "INFO", "n_rules": 1, "evidence": [{"source": "entropy", "feature": "entropy_dst_port", "value": 3.4, "deviation": 3.4}]}
+{"timestamp": 1778387004.6002073, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778387004.6004665, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778387004.6006937, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778387004.6010373, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
+{"timestamp": 1778387004.6012902, "src_ip": "10.0.1.10", "attack": "anomaly_traffic", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked"}
