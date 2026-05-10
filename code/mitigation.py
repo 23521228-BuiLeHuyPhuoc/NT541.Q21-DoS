@@ -14,7 +14,6 @@ class BlockModule:
                                 match=match, instructions=inst,
                                 hard_timeout=timeout)
         dp.send_msg(mod)
-        self.app.logger.warning(f"[BLOCK] {src_ip} for {timeout}s")
 
 class RateLimitModule:
     """Meter Table OF1.3 -- yeu cau protocols='OpenFlow13'."""
@@ -41,7 +40,6 @@ class RateLimitModule:
                                  match=match, instructions=inst,
                                  hard_timeout=120)
         dp.send_msg(fmod)
-        self.app.logger.warning(f"[RATELIMIT] {src_ip} -> {pps} pps (meter={mid})")
 
 class BlacklistManager:
     """{src_ip: expire_ts} voi auto-release."""

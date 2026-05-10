@@ -157,7 +157,7 @@ def debug_ryu():
     # Them thong tin entropy computation
     entropy_val, entropy_info = _compute_entropy_from_ryu()
     result["entropy_result"] = {"value": entropy_val, "info": entropy_info}
-    result["prev_flow_count_keys"] = len(_prev_flow_counts)
+
     
     return jsonify(result)
 
@@ -165,5 +165,5 @@ def debug_ryu():
 # KHOI CHAY FLASK SERVER
 # ==========================================
 if __name__ == '__main__':
-    # Chay tren moi interface (0.0.0.0) cong 8080
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    print(f"[DASHBOARD] http://0.0.0.0:8080")
+    app.run(host='0.0.0.0', port=8080, debug=False)

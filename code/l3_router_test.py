@@ -60,12 +60,13 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 self.logger.error("[INFLUXDB] Khong the ket noi den InfluxDB: %s", e)
                 self.influx_client = None
         else:
-            self.logger.warning("[INFLUXDB] Thu vien influxdb chua duoc cai dat.")
+            self.logger.debug("[INFLUXDB] Thu vien influxdb chua duoc cai dat.")
 
         # --- FLOW STATS ---
         self.flow_stats = {}
         self.total_pps = 0
 
+        self._startup_time = time.time()  # Thoi diem khoi dong (dung cho grace period)
         hub.spawn(self._monitor_entropy)
         hub.spawn(self._monitor_flows)
 
@@ -74,8 +75,10 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         dp = ev.datapath
         if ev.state == MAIN_DISPATCHER:
             self.dps[dp.id] = dp
+            self.logger.info("[RYU] Switch s%d (dpid=%d) da ket noi", dp.id, dp.id)
         elif dp.id in self.dps:
             del self.dps[dp.id]
+            self.logger.info("[RYU] Switch s%d (dpid=%d) da ngat ket noi", dp.id, dp.id)
 
 # KIEM TRA ENTROPY DE PHAT HIEN TRAFFIC BAT THUONG 
     def _monitor_entropy(self):
@@ -280,6 +283,9 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     if pps > 0:
                         sum_pps += pps
                     if pps > 500 and src not in self.blocked_ips:
+                        # Grace period: khong block trong 30s dau sau khi khoi dong
+                        if time.time() - self._startup_time < 30:
+                            continue
                         self.logger.warning("[BLOCK] Chan IP %s — toc do qua cao: %d goi/giay (nguong: 500)", src, int(pps))
                         self._block_ip(src)
                         self._log_alert(src, "high_pps_flood", "WARN", "Blocked")

@@ -18,7 +18,10 @@ WARMUP_CYCLES = 10        # So chu ky dau khong alert (de flow table on dinh)
 last_total_packets = 0
 last_check_time = time.time()
 first_run = True
-cycle_count = 0  # Dem so chu ky da chay
+cycle_count = 0
+_idle_logged = False    # Chi in "Mang trong" 1 lan
+_warmup_logged = False  # Chi in warmup 1 lan
+_skip_logged = False    # Chi in skip 1 lan
 
 # Them bien Global nay o dau file detector.py (duoi dong first_run = True)
 last_flow_counts = {}
@@ -99,9 +102,13 @@ def extract_features(flows):
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
-        print(f"[{timestamp}] Mang trong -> Entropy giu baseline = {entropy_src_ip}")
+        global _idle_logged
+        if not _idle_logged:
+            print(f"[{timestamp}] Mang trong -> Entropy giu baseline = {entropy_src_ip}")
+            _idle_logged = True
     else:
-        print(f"[{timestamp}] Mang co {len(src_ip_counts)} IPs | Goi tin (giay nay): {total_src_pkts_delta} | Entropy: {round(entropy_src_ip, 2)}")
+        _idle_logged = False  # Reset khi co traffic
+        print(f"[{timestamp}] {len(src_ip_counts)} IPs | {total_src_pkts_delta} pkts | Entropy: {round(entropy_src_ip, 2)}")
 
     features = {
         "pps": pps, 
@@ -124,6 +131,7 @@ def main():
         stat_det = StatsDetector(baseline_path=baseline_path)
         sig_matcher = SignatureMatcher(csv_path=os.path.join(_BASE_DIR, '..', 'docs', 'attack_signatures.csv'))
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
+        print(f"[{time.strftime('%H:%M:%S')}] [DETECTOR] San sang. Theo doi switch s2 moi 1s...")
         
         while True:
             try:
@@ -155,18 +163,21 @@ def main():
                     attack_type = sig_hits[0].get("attack", "known_signature")
                 
                 # --- GUARD: Chi emit alert khi traffic du lon ---
-                # Khi traffic thap (vd: pingall chi ~12 goi ICMP), entropy tu nhien
-                # thap vi chi co 1-2 IP -> false positive.
-                # Chi alert khi: (1) qua warmup, (2) du goi tin de entropy co y nghia
                 total_pkts = features.get("_total_pkts_delta", 0)
                 
                 if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
-                    timestamp = time.strftime('%H:%M:%S')
-                    print(f"[{timestamp}] [WARMUP {cycle_count}/{WARMUP_CYCLES}] Bo qua alert (flow table chua on dinh)")
+                    global _warmup_logged
+                    if not _warmup_logged:
+                        print(f"[{time.strftime('%H:%M:%S')}] [WARMUP] Bo qua alert trong {WARMUP_CYCLES} chu ky dau...")
+                        _warmup_logged = True
                 elif n_rules > 0 and total_pkts < MIN_PKTS_FOR_ALERT:
-                    timestamp = time.strftime('%H:%M:%S')
-                    print(f"[{timestamp}] [SKIP] Traffic qua thap ({total_pkts} pkts < {MIN_PKTS_FOR_ALERT}) -> khong alert (co the la pingall/ARP)")
+                    global _skip_logged
+                    if not _skip_logged:
+                        print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic qua thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts) -> khong alert")
+                        _skip_logged = True
                 elif n_rules > 0:
+                    _skip_logged = False  # Reset khi co alert that
+                    print(f"[{time.strftime('%H:%M:%S')}] >>> PHAT HIEN: {attack_type} (entropy={features.get('entropy_src', '?')}, {n_rules} rules matched)")
                     alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
             except Exception as e:
                 print(f"[detector] Loi: {e}", flush=True)
