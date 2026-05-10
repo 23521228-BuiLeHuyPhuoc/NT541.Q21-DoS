@@ -143,26 +143,29 @@ class AlertAPI(ControllerBase):
         entropy_val = 0.0
         pps = 0
         unique_ips = 0
-        file_fresh = False
 
-        try:
-            mtime = os.path.getmtime(features_path)
-            # Chi dung file neu duoc cap nhat trong 5 giay gan nhat
-            if time.time() - mtime < 5:
-                with open(features_path) as f:
-                    features = json.load(f)
-                entropy_val = features.get('entropy_realtime', 0.0)
-                pps = features.get('pps', 0)
-                unique_ips = features.get('unique_ips', 0)
-                file_fresh = True
-        except Exception:
-            pass
-
-        # Fallback: dung entropy tu controller khi file stale/loi
-        if not file_fresh and self.router.last_entropy > 0:
+        # Khi spoof detected -> LUON dung entropy tu controller (file khong dang tin cay)
+        if self.router.attack_status == 2 and self.router.last_entropy > 0:
             entropy_val = self.router.last_entropy
-            unique_ips = len(self.router.src_ip_window) if self.router.src_ip_window else 0
-            pps = self.router.total_pps
+            unique_ips = len(self.router._pktin_unique_ips) if self.router._pktin_unique_ips else 0
+            pps = self.router.packet_rate
+        else:
+            # Binh thuong: doc tu file detector.py
+            try:
+                mtime = os.path.getmtime(features_path)
+                if time.time() - mtime < 5:
+                    with open(features_path) as f:
+                        features = json.load(f)
+                    entropy_val = features.get('entropy_realtime', 0.0)
+                    pps = features.get('pps', 0)
+                    unique_ips = features.get('unique_ips', 0)
+                elif self.router.last_entropy > 0:
+                    entropy_val = self.router.last_entropy
+                    unique_ips = len(self.router.src_ip_window) if self.router.src_ip_window else 0
+                    pps = self.router.total_pps
+            except Exception:
+                if self.router.last_entropy > 0:
+                    entropy_val = self.router.last_entropy
 
         body = json.dumps({
             "entropy": round(entropy_val, 4),
