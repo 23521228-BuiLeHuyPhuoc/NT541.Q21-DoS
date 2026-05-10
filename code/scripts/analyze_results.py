@@ -97,8 +97,8 @@ def main():
     print("  Cap 3 (block):      threshold=3 alerts -> block hoan toan 60s")
     print("")
     print("  De xuat: giam rate_limit pps tu 1000 -> 500 (khoang 1 Mbps)")
-    print("  Ly do: voi avg packet size ~100 bytes, 500 pps ≈ 400 Kbps")
-    print("         voi avg packet size ~1000 bytes, 500 pps ≈ 4 Mbps")
+    print("  Ly do: voi avg packet size ~100 bytes, 500 pps ~ 400 Kbps")
+    print("         voi avg packet size ~1000 bytes, 500 pps ~ 4 Mbps")
     print("         Day la muc hop ly de giam thieu DDoS ma khong chan hoan toan")
 
 
