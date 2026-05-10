@@ -23,7 +23,7 @@ def kill_existing():
 def start_ryu():
     """Khoi dong Ryu TRUOC topology de switches ket noi ngay."""
     print(f"[*] Dang khoi dong Ryu (log: {RYU_LOG})...")
-    ryu_out = open(RYU_LOG, 'w')
+    ryu_out = open(RYU_LOG, 'w', encoding='utf-8')
     p = subprocess.Popen(["ryu-manager", "--wsapi-port", "8081", "ryu.app.ofctl_rest", "code/l3_router_extended.py"],
                          stdout=ryu_out, stderr=subprocess.STDOUT,
                          start_new_session=True)
@@ -63,9 +63,11 @@ def start_topology():
 
 def start_detector():
     print(f"[*] Dang khoi dong Detector (log: {DETECTOR_LOG})...")
-    det_out = open(DETECTOR_LOG, 'w')
+    det_out = open(DETECTOR_LOG, 'w', encoding='utf-8')
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
     p = subprocess.Popen(["python3", "-u", "code/detector.py"], stdout=det_out, stderr=subprocess.STDOUT,
-                         start_new_session=True)
+                         start_new_session=True, env=env)
     return p, det_out
 
 def wait_for_alert(t0, timeout=30):
@@ -153,7 +155,7 @@ def run(scenario_id):
             print("  [-] Khong phat hien duoc canh bao.")
             # In 5 dong cuoi cua detector.log de debug
             try:
-                with open(DETECTOR_LOG, 'r') as f:
+                with open(DETECTOR_LOG, 'r', encoding='utf-8') as f:
                     lines = f.readlines()
                     tail = lines[-5:] if len(lines) >= 5 else lines
                     print("  [DEBUG] detector.log (cuoi):")

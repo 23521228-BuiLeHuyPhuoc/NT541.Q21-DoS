@@ -89,9 +89,9 @@ def extract_features(flows):
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
-        print(f"[{timestamp}] Mạng trống -> Entropy giữ baseline = {entropy_src_ip}")
+        print(f"[{timestamp}] Mang trong -> Entropy giu baseline = {entropy_src_ip}")
     else:
-        print(f"[{timestamp}] Mạng có {len(src_ip_counts)} IPs | Gói tin (giây này): {total_src_pkts_delta} | Entropy: {round(entropy_src_ip, 2)}")
+        print(f"[{timestamp}] Mang co {len(src_ip_counts)} IPs | Goi tin (giay nay): {total_src_pkts_delta} | Entropy: {round(entropy_src_ip, 2)}")
 
     features = {
         "pps": pps, 
