@@ -9,9 +9,16 @@ RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.json")
 
+# --- Nguong toi thieu de tranh false positive khi traffic thap (vd: pingall) ---
+# Entropy chi co y nghia thong ke khi co du goi tin trong 1 chu ky.
+# Duoi nguong nay, entropy thap la do it goi, KHONG PHAI do tan cong.
+MIN_PKTS_FOR_ALERT = 50   # So goi tin toi thieu trong 1 chu ky de xet alert
+WARMUP_CYCLES = 10        # So chu ky dau khong alert (de flow table on dinh)
+
 last_total_packets = 0
 last_check_time = time.time()
 first_run = True
+cycle_count = 0  # Dem so chu ky da chay
 
 # Them bien Global nay o dau file detector.py (duoi dong first_run = True)
 last_flow_counts = {}
@@ -101,7 +108,8 @@ def extract_features(flows):
         "entropy_dst_port": round(entropy_dst_port, 3), # Fix thieu feature port
         "syn_pct": round(syn_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0, 
         "icmp_pct": round(icmp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
-        "suspect_src_ip": src_ip_counts.most_common(1)[0][0] if src_ip_counts else "10.0.1.10"
+        "suspect_src_ip": src_ip_counts.most_common(1)[0][0] if src_ip_counts else "10.0.1.10",
+        "_total_pkts_delta": total_src_pkts_delta  # Dung de main() kiem tra traffic volume
     }
     return features
 
@@ -116,6 +124,9 @@ def main():
         
         while True:
             try:
+                global cycle_count
+                cycle_count += 1
+                
                 resp = requests.get(RYU_FLOW_URL, timeout=2)
                 flows = resp.json().get("2",[])
                 features = extract_features(flows)
@@ -125,8 +136,7 @@ def main():
                     json.dump(features, f)
                 os.replace(temp_path, JSON_PATH)
                 
-                # Luon chay detection pipeline (bo skip pps<1 de dashboard co du lieu)
-                
+                # Luon chay detection pipeline de dashboard co du lieu
                 ent_res = ent_det.check(features)
                 stat_res = stat_det.check(features)
                 sig_hits = sig_matcher.match(features)
@@ -140,8 +150,20 @@ def main():
                 if sig_hits:
                     n_rules += len(sig_hits); evidence.extend(sig_hits)
                     attack_type = sig_hits[0].get("attack", "known_signature")
-                    
-                if n_rules > 0:
+                
+                # --- GUARD: Chi emit alert khi traffic du lon ---
+                # Khi traffic thap (vd: pingall chi ~12 goi ICMP), entropy tu nhien
+                # thap vi chi co 1-2 IP -> false positive.
+                # Chi alert khi: (1) qua warmup, (2) du goi tin de entropy co y nghia
+                total_pkts = features.get("_total_pkts_delta", 0)
+                
+                if n_rules > 0 and cycle_count <= WARMUP_CYCLES:
+                    timestamp = time.strftime('%H:%M:%S')
+                    print(f"[{timestamp}] [WARMUP {cycle_count}/{WARMUP_CYCLES}] Bo qua alert (flow table chua on dinh)")
+                elif n_rules > 0 and total_pkts < MIN_PKTS_FOR_ALERT:
+                    timestamp = time.strftime('%H:%M:%S')
+                    print(f"[{timestamp}] [SKIP] Traffic qua thap ({total_pkts} pkts < {MIN_PKTS_FOR_ALERT}) -> khong alert (co the la pingall/ARP)")
+                elif n_rules > 0:
                     alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
             except Exception as e:
                 print(f"[detector] Loi: {e}", flush=True)
