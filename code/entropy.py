@@ -23,10 +23,27 @@ class EntropyDetector:
 
     def check(self, features):
         alerts =[]
-        if features.get('entropy_src_ip', 0) > 4.0 and \
-           features.get('pps', 0) > self.mu.get('pps', 0):
+
+        # Flash crowd check: CHI loai tru khi entropy cao + syn_pct thap + dst_port entropy cao
+        # Spoof flood co entropy cao NHUNG syn_pct cao va dst_port entropy thap
+        entropy_src = features.get('entropy_src_ip', 0)
+        syn_pct = features.get('syn_pct', 0)
+        dst_port_entropy = features.get('entropy_dst_port', 0)
+
+        is_flash_crowd = (
+            entropy_src > 4.0 and
+            features.get('pps', 0) > self.mu.get('pps', 0) and
+            syn_pct < 0.3 and          # Flash crowd: nhieu loai traffic, khong chi SYN
+            dst_port_entropy > 2.0     # Flash crowd: nhieu port khac nhau
+        )
+        if is_flash_crowd:
             return {"anomaly": False, "alerts":[], "reason": "flash_crowd_pattern"}
-        
+
+        # Spoof detection: entropy cao + syn_pct cao = spoof flood
+        if entropy_src > 3.5 and syn_pct > 0.5:
+            alerts.append({"source": "entropy", "feature": "entropy_src_ip",
+                           "value": entropy_src, "deviation": 99.0,
+                           "reason": "spoof_high_entropy_high_syn"})
 
         for key in ('entropy_src_ip', 'entropy_dst_port', 'entropy_renyi_src'):
             v = features.get(key, 0)

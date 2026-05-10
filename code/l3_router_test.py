@@ -8,6 +8,7 @@ import math
 import time
 import json
 import os
+import datetime
 
 try:
     from influxdb import InfluxDBClient
@@ -39,7 +40,19 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.ENTROPY_LOW = 1.5             # NGUONG THAP (NGHI NGO 1 IP TAN CONG)
         self.attack_status = 0             # 0: BINH THUONG, 1: TAN CONG IP, 2: SPOOF
         self.last_entropy = 0.0            # CACHE ENTROPY MOI NHAT CHO DASHBOARD
-        
+
+        # --- SPOOF DETECTION tu packet_in ---
+        self._pktin_window_start = time.time()
+        self._pktin_count = 0
+        self._pktin_unique_ips = set()
+        self._pktin_mac_counter = Counter()
+        self._SPOOF_WINDOW = 2             # Kiem tra moi 2 giay
+        self._SPOOF_PKT_THRESHOLD = 100    # > 100 packet_in trong 1 window
+        self._SPOOF_IP_THRESHOLD = 20      # > 20 IP duy nhat
+        self._SPOOF_IP_RATIO = 0.3         # Ty le unique_ip/total > 30%
+        self._spoof_blocked_macs = set()   # MAC da bi block do spoof
+        self._spoof_victim_ip = None       # IP bi tan cong
+
         # DANH SACH IP HOP LE (KHONG BI CHAN)
         self.WHITELIST_SRC = {
             '10.0.2.10', '10.0.2.11',
@@ -270,6 +283,21 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         if p_ip:
             self.packet_rate += 1
 
+            # --- SPOOF DETECTION: theo doi packet_in rate + unique IPs ---
+            if p_ip.src not in self.gateways and p_ip.src not in self.WHITELIST_SRC:
+                now_pkt = time.time()
+                self._pktin_count += 1
+                self._pktin_unique_ips.add(p_ip.src)
+                self._pktin_mac_counter[p_eth.src] += 1
+
+                if now_pkt - self._pktin_window_start >= self._SPOOF_WINDOW:
+                    self._check_spoof_flood(dp, p_ip.dst)
+                    # Reset window
+                    self._pktin_window_start = now_pkt
+                    self._pktin_count = 0
+                    self._pktin_unique_ips.clear()
+                    self._pktin_mac_counter.clear()
+
             # Ghi TAT CA IP vao window (ke ca whitelist) de pingall tao entropy cao
             # Chi loai gateway IP (khong phai traffic thuc)
             if p_ip.src not in self.gateways:
@@ -338,6 +366,122 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         datapath.send_msg(parser.OFPFlowMod(
             datapath=datapath, priority=priority, match=match,
             instructions=inst, idle_timeout=idle_timeout))
+
+    def _check_spoof_flood(self, dp, victim_ip):
+        """Kiem tra spoof flood tu packet_in rate. Goi moi _SPOOF_WINDOW giay."""
+        if self._pktin_count < self._SPOOF_PKT_THRESHOLD:
+            return
+        if len(self._pktin_unique_ips) < self._SPOOF_IP_THRESHOLD:
+            return
+
+        unique_ratio = len(self._pktin_unique_ips) / self._pktin_count
+        if unique_ratio < self._SPOOF_IP_RATIO:
+            return
+
+        # --- SPOOF FLOOD DETECTED ---
+        top_mac, top_count = self._pktin_mac_counter.most_common(1)[0]
+
+        # Tinh entropy thuc te tu cac IP trong window
+        ip_counts = Counter(list(self._pktin_unique_ips))
+        total_ips = len(self._pktin_unique_ips)
+        if total_ips > 1:
+            spoof_entropy = -sum((1/total_ips) * math.log2(1/total_ips) for _ in ip_counts)
+        else:
+            spoof_entropy = 0.0
+        self.last_entropy = round(spoof_entropy, 4)
+        self.attack_status = 2
+        self._spoof_victim_ip = victim_ip
+
+        if top_mac in self._spoof_blocked_macs:
+            return  # Da block roi
+
+        self._spoof_blocked_macs.add(top_mac)
+        self.logger.warning(
+            "[SPOOF] === PHAT HIEN IP SPOOF FLOOD ===")
+        self.logger.warning(
+            "[SPOOF] %d unique IPs, %d pkts trong %ds, entropy=%.2f",
+            len(self._pktin_unique_ips), self._pktin_count,
+            self._SPOOF_WINDOW, spoof_entropy)
+        self.logger.warning(
+            "[SPOOF] Attacker MAC: %s (%d pkts), Victim: %s",
+            top_mac, top_count, victim_ip)
+        self.logger.warning(
+            "[SPOOF] >> BLOCK MAC %s trong 20s", top_mac)
+
+        # Block MAC tren switch s2
+        self._block_mac(top_mac)
+        self.blocked_macs.add(top_mac)
+
+        # Ghi alert vao file cho dashboard
+        self._write_spoof_alert(top_mac, victim_ip, spoof_entropy)
+
+        # Tu dong go block sau 20s
+        def _unblock_spoof():
+            hub.sleep(20)
+            self._spoof_blocked_macs.discard(top_mac)
+            self.blocked_macs.discard(top_mac)
+            self.attack_status = 0
+            self._spoof_victim_ip = None
+            self.logger.info("[SPOOF] Da go block MAC %s sau 20s", top_mac)
+        hub.spawn(_unblock_spoof)
+
+    def _write_spoof_alert(self, mac, victim_ip, entropy):
+        """Ghi 3 cap alert (Log, Rate-Limit, Block) cho spoof vao alerts.json."""
+        alerts_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   '..', 'results', 'raw', 'alerts.json')
+        os.makedirs(os.path.dirname(alerts_file), exist_ok=True)
+
+        # Tim IP tuong ung voi MAC
+        src_ip = None
+        for ip, m in self.arp_table.items():
+            if m == mac:
+                src_ip = ip
+                break
+        if not src_ip:
+            src_ip = f"spoof_mac_{mac}"
+
+        now = time.time()
+        levels = [
+            {"severity": "INFO",     "action": "Logged",       "n_rules": 1},
+            {"severity": "WARN",     "action": "Rate-Limited", "n_rules": 2},
+            {"severity": "CRITICAL", "action": "Blocked",      "n_rules": 3},
+        ]
+        with open(alerts_file, 'a') as f:
+            for lvl in levels:
+                alert = {
+                    "timestamp": now,
+                    "src_ip": src_ip,
+                    "attack": "s06_ip_spoof",
+                    "severity": lvl["severity"],
+                    "n_rules": lvl["n_rules"],
+                    "action": lvl["action"],
+                    "evidence": [{
+                        "source": "packet_in_spoof_detect",
+                        "mac": mac,
+                        "victim": victim_ip,
+                        "entropy": entropy,
+                        "unique_ips": len(self._pktin_unique_ips),
+                        "pkts": self._pktin_count
+                    }]
+                }
+                f.write(json.dumps(alert) + "\n")
+                now += 1  # Tang timestamp 1s cho moi cap
+
+        self.logger.warning("[SPOOF] Da ghi 3 cap alert vao alerts.json")
+
+        # Gui alert toi Ryu REST API (cho l3_router_extended xu ly)
+        try:
+            import requests
+            for lvl in levels:
+                requests.post('http://127.0.0.1:8081/api/alert', json={
+                    "src_ip": src_ip,
+                    "attack": "s06_ip_spoof",
+                    "severity": lvl["severity"],
+                    "action": lvl["action"],
+                    "mac": mac
+                }, timeout=1)
+        except Exception:
+            pass  # Controller co the dang ban, da block bang flow roi
 
     def _send_arp(self, dp, port, eth_dst, opcode, s_mac, s_ip, d_mac, d_ip):
         pkt = packet.Packet()

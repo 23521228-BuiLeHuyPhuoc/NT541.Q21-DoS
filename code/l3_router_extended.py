@@ -136,20 +136,33 @@ class AlertAPI(ControllerBase):
 
     @route('entropy', '/api/entropy', methods=['GET'])
     def get_entropy(self, req, **kw):
-        """Expose entropy real-time cho dashboard — doc tu detector.py output."""
+        """Expose entropy real-time cho dashboard — doc tu detector.py output, fallback tu controller."""
         import os
         features_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                      '..', 'results', 'raw', 'current_features.json')
+        entropy_val = 0.0
+        pps = 0
+        unique_ips = 0
+        file_fresh = False
+
         try:
-            with open(features_path) as f:
-                features = json.load(f)
-            entropy_val = features.get('entropy_realtime', 0.0)
-            pps = features.get('pps', 0)
-            unique_ips = features.get('unique_ips', 0)
+            mtime = os.path.getmtime(features_path)
+            # Chi dung file neu duoc cap nhat trong 5 giay gan nhat
+            if time.time() - mtime < 5:
+                with open(features_path) as f:
+                    features = json.load(f)
+                entropy_val = features.get('entropy_realtime', 0.0)
+                pps = features.get('pps', 0)
+                unique_ips = features.get('unique_ips', 0)
+                file_fresh = True
         except Exception:
-            entropy_val = 0.0
-            pps = 0
-            unique_ips = 0
+            pass
+
+        # Fallback: dung entropy tu controller khi file stale/loi
+        if not file_fresh and self.router.last_entropy > 0:
+            entropy_val = self.router.last_entropy
+            unique_ips = len(self.router.src_ip_window) if self.router.src_ip_window else 0
+            pps = self.router.total_pps
 
         body = json.dumps({
             "entropy": round(entropy_val, 4),
@@ -157,6 +170,8 @@ class AlertAPI(ControllerBase):
             "unique_ips": unique_ips,
             "attack_status": self.router.attack_status,
             "blocked_ips": list(self.router.blocked_ips),
-            "packet_rate": pps
+            "blocked_macs": list(self.router.blocked_macs),
+            "packet_rate": pps,
+            "spoof_detected": self.router.attack_status == 2
         })
         return Response(content_type='application/json', body=body.encode())
