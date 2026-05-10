@@ -1,4 +1,4 @@
-import time, requests, sys, math, json, os
+import time, requests, sys, math, json, os, traceback
 from collections import Counter
 from alert_system import AlertSystem
 from entropy import EntropyDetector
@@ -143,8 +143,8 @@ def main():
                     
                 if n_rules > 0:
                     alr.emit(features["suspect_src_ip"], attack_type, n_rules, evidence)
-            except Exception: 
-                pass
+            except Exception as e:
+                print(f"[detector] Loi: {e}", flush=True)
             time.sleep(1)
     except Exception as e: print(f"Error: {e}")
 
