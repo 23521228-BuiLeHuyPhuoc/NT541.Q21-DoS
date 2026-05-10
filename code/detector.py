@@ -39,6 +39,7 @@ def extract_features(flows):
     else:
         delta_time = now - last_check_time
         pps = (current_total - last_total_packets) / delta_time if delta_time > 0 else 0
+        pps = max(0, pps)  # Flow expiry co the lam current_total giam -> PPS am
         last_total_packets = current_total
         last_check_time = now
 

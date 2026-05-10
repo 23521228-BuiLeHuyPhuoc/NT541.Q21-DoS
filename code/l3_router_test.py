@@ -254,7 +254,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             return
 
         if dp.id != 2:
-            return super(SimpleRouterEntropy, self)._packet_in_handler(ev)
+            return
 
         p_arp = pkt.get_protocol(arp.arp)
         p_ip = pkt.get_protocol(ipv4.ipv4)
@@ -281,7 +281,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 if p_icmp:
                     self.proto_window.append('icmp')
                 elif p_tcp:
-                    if p_tcp.has_flags(p_tcp.SYN) and not p_tcp.has_flags(p_tcp.ACK):
+                    if (p_tcp.bits & 0x02) and not (p_tcp.bits & 0x10):
                         if p_tcp.dst_port == 80 or p_tcp.dst_port == 443:
                             self.proto_window.append('tcp_http')
                         else:
@@ -321,10 +321,9 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             ]
 
             # Cai flow cho TAT CA IP de flow stats ghi nhan traffic chinh xac.
-            # Whitelist: timeout dai (30s) - traffic binh thuong
-            # Non-whitelist: timeout ngan (5s) - de detector.py thay duoc attack traffic
-            # Truoc day chi cai cho whitelist -> attacker traffic bi an trong flow stats!
-            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst)
+            # Them ip_proto vao match de detector.py doc duoc icmp_pct/syn_pct/udp_pct
+            proto_num = p_ip.proto  # 1=ICMP, 6=TCP, 17=UDP
+            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
             if p_ip.src in self.WHITELIST_SRC:
                 self.add_flow(dp, 10, match, actions, idle_timeout=30)
             else:

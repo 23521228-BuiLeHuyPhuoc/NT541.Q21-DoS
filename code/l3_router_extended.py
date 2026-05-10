@@ -114,9 +114,19 @@ class AlertAPI(ControllerBase):
 
     @route('entropy', '/api/entropy', methods=['GET'])
     def get_entropy(self, req, **kw):
-        """Expose entropy real-time cho dashboard -- cung gia tri voi Ryu log."""
+        """Expose entropy real-time cho dashboard — doc tu detector.py output."""
+        import os
+        features_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                     '..', 'results', 'raw', 'current_features.json')
+        try:
+            with open(features_path) as f:
+                features = json.load(f)
+            entropy_val = features.get('entropy_src', 0.0)
+        except Exception:
+            entropy_val = self.router.last_entropy
+
         body = json.dumps({
-            "entropy": round(self.router.last_entropy, 4),
+            "entropy": round(entropy_val, 4),
             "window_size": len(self.router.src_ip_window),
             "unique_ips": len(set(self.router.src_ip_window)),
             "attack_status": self.router.attack_status,
