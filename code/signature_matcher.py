@@ -1,4 +1,4 @@
-"""Signature-based detector — đọc CSV của TV1 + parse safe."""
+"""Signature-based detector -- doc CSV cua TV1 + parse safe."""
 import csv
 import ast
 import operator
@@ -14,14 +14,14 @@ def safe_eval(rule_str, ctx):
     if not rule_str or rule_str.strip() == "":
         return False
         
-    # Tự động sửa lỗi cú pháp: đổi ' AND ' thành ' and ', ' OR ' thành ' or '
+    # Tu dong sua loi cu phap: doi ' AND ' thanh ' and ', ' OR ' thanh ' or '
     clean_rule = rule_str.replace(' AND ', ' and ').replace(' OR ', ' or ')
     clean_rule = clean_rule.replace('&&', ' and ').replace('||', ' or ')
     
     try:
         tree = ast.parse(clean_rule.strip(), mode='eval')
     except SyntaxError:
-        raise ValueError(f"Sai cú pháp Python: {clean_rule}")
+        raise ValueError(f"Sai cu phap Python: {clean_rule}")
 
     def _ev(n):
         if isinstance(n, ast.Expression): return _ev(n.body)

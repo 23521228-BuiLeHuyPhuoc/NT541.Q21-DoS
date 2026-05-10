@@ -1,10 +1,10 @@
-"""Mitigation router — kế thừa SimpleRouterEntropy + REST + graduated response."""
+"""Mitigation router -- ke thua SimpleRouterEntropy + REST + graduated response."""
 import json
 import yaml
 import time
 import logging
 
-# Tắt log packet_in của simple_switch_13 để tránh rác log làm treo Ryu
+# Tat log packet_in cua simple_switch_13 de tranh rac log lam treo Ryu
 logging.getLogger('ryu.app.simple_switch_13').setLevel(logging.WARNING)
 
 from ryu.ofproto import ofproto_v1_3
@@ -41,9 +41,9 @@ class L3RouterExtended(SimpleRouterEntropy):
         except FileNotFoundError:
             return set()
 
-    # Không override _packet_in_handler — để class cha (SimpleRouterEntropy) xử lý.
-    # Class cha chỉ cài flow cho whitelist IP, non-whitelist luôn đi qua controller
-    # → entropy window được cập nhật liên tục khi bị tấn công.
+    # Khong override _packet_in_handler -- de class cha (SimpleRouterEntropy) xu ly.
+    # Class cha chi cai flow cho whitelist IP, non-whitelist luon di qua controller
+    # -> entropy window duoc cap nhat lien tuc khi bi tan cong.
 
     def handle_alert(self, payload):
         src = payload.get('src_ip')
@@ -86,7 +86,7 @@ class AlertAPI(ControllerBase):
 
     @route('entropy', '/api/entropy', methods=['GET'])
     def get_entropy(self, req, **kw):
-        """Expose entropy real-time cho dashboard — cùng giá trị với Ryu log."""
+        """Expose entropy real-time cho dashboard -- cung gia tri voi Ryu log."""
         body = json.dumps({
             "entropy": round(self.router.last_entropy, 4),
             "window_size": len(self.router.src_ip_window),

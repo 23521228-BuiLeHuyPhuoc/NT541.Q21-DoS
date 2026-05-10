@@ -231,7 +231,7 @@ def run(scenario_id):
         return result
     finally:
         print("[*] Dang don dep va tat cac tien trinh...")
-        # Dùng os.killpg vì mỗi subprocess chạy trong session riêng
+        # Dung os.killpg vi moi subprocess chay trong session rieng
         try:
             os.killpg(os.getpgid(det.pid), signal.SIGTERM)
         except (ProcessLookupError, PermissionError, OSError):

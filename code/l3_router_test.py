@@ -117,7 +117,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     mac_counts = Counter(self.src_mac_window)
                     top_mac, top_count = mac_counts.most_common(1)[0] if mac_counts else (None, 0)
                     
-                    # s06 vs s08: nếu 1 MAC chiếm >50% → spoof (s06), ngược lại → flash crowd (s08)
+                    # s06 vs s08: neu 1 MAC chiem >50% -> spoof (s06), nguoc lai -> flash crowd (s08)
                     if top_count / total > 0.5:
                         attack_type = "s06_ip_spoof"
                         self.logger.warning("[CANH BAO] %s! Entropy = %.2f (nguong > %.2f)", attack_type, entropy, self.ENTROPY_HIGH)
@@ -161,7 +161,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     self.logger.error("[INFLUXDB] Khong the ghi du lieu vao InfluxDB: %s", e)
 
     def _classify_attack(self):
-        """Phân loại tấn công dựa trên protocol trong window → map 8 kịch bản."""
+        """Phan loai tan cong dua tren protocol trong window -> map 8 kich ban."""
         if not self.proto_window:
             return "s01_syn_flood"
         proto_counts = Counter(self.proto_window)
@@ -176,7 +176,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         elif dominant == 'udp' and ratio > 0.4:
             return "s02_udp_flood"
         elif dominant == 'tcp_http' and ratio > 0.3:
-            # Phân biệt s04 vs s07: slowloris có PPS thấp
+            # Phan biet s04 vs s07: slowloris co PPS thap
             if self.packet_rate < 50:
                 return "s07_slowloris"
             return "s04_http_flood"
@@ -189,7 +189,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         return "s01_syn_flood"
 
     def _log_alert(self, src, attack_type, severity, action):
-        """Ghi alert vào file JSON để dashboard /alerts page hiển thị."""
+        """Ghi alert vao file JSON de dashboard /alerts page hien thi."""
         try:
             alert = {
                 "timestamp": time.time(),
@@ -300,8 +300,8 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         if p_ip:
             self.packet_rate += 1
 
-            # Ghi TẤT CẢ IP vào window (kể cả whitelist) để pingall tạo entropy cao
-            # Chỉ loại gateway IP (không phải traffic thực)
+            # Ghi TAT CA IP vao window (ke ca whitelist) de pingall tao entropy cao
+            # Chi loai gateway IP (khong phai traffic thuc)
             if p_ip.src not in self.gateways:
                 self.src_ip_window.append(p_ip.src)
                 self.src_mac_window.append(p_eth.src)

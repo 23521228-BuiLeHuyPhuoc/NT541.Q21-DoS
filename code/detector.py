@@ -13,7 +13,7 @@ last_total_packets = 0
 last_check_time = time.time()
 first_run = True
 
-# Thêm biến Global này ở đầu file detector.py (dưới dòng first_run = True)
+# Them bien Global nay o dau file detector.py (duoi dong first_run = True)
 last_flow_counts = {}
 
 def extract_features(flows):
@@ -25,7 +25,7 @@ def extract_features(flows):
         last_total_packets = current_total
         last_check_time = now
         first_run = False
-        pps = 11.4  # Baseline PPS mặc định để không bị skip ở vòng đầu
+        pps = 11.4  # Baseline PPS mac dinh de khong bi skip o vong dau
     else:
         delta_time = now - last_check_time
         pps = (current_total - last_total_packets) / delta_time if delta_time > 0 else 0
@@ -43,17 +43,17 @@ def extract_features(flows):
         match = flow.get('match', {})
         pkt_count = flow.get('packet_count', 0)
         
-        # Tạo định danh (ID) duy nhất cho mỗi luồng
+        # Tao dinh danh (ID) duy nhat cho moi luong
         match_str = str(match)
         current_flow_counts[match_str] = pkt_count
         
-        # TÍNH DELTA (Chênh lệch gói tin trong 1 giây qua của từng luồng)
+        # TINH DELTA (Chenh lech goi tin trong 1 giay qua cua tung luong)
         last_count = last_flow_counts.get(match_str, 0)
-        # Nếu flow mới bị reset (số packet < số cũ), lấy luôn số packet hiện tại
+        # Neu flow moi bi reset (so packet < so cu), lay luon so packet hien tai
         delta_pkt = pkt_count - last_count if pkt_count >= last_count else pkt_count
         
         if delta_pkt == 0:
-            continue # Bỏ qua flow không có traffic mới
+            continue # Bo qua flow khong co traffic moi
 
         src_ip = match.get('ipv4_src') or match.get('nw_src')
         if src_ip:
@@ -70,22 +70,22 @@ def extract_features(flows):
         if match.get('tcp_flags') == 2:
             syn_packets += delta_pkt
 
-    # Cập nhật bộ nhớ để dùng cho chu kỳ giây tiếp theo
+    # Cap nhat bo nho de dung cho chu ky giay tiep theo
     last_flow_counts = current_flow_counts
 
-    # 1. Tính Shannon Entropy cho Source IP
+    # 1. Tinh Shannon Entropy cho Source IP
     total_src_pkts_delta = sum(src_ip_counts.values())
     if total_src_pkts_delta > 0:
         entropy_src_ip = -sum((c/total_src_pkts_delta) * math.log2(c/total_src_pkts_delta) for c in src_ip_counts.values())
     else:
-        entropy_src_ip = 3.4  # Giữ baseline khi mạng idle (không có gói tin mới)
+        entropy_src_ip = 3.4  # Giu baseline khi mang idle (khong co goi tin moi)
 
-    # 2. Tính Shannon Entropy cho Destination Port (Dành cho s04_http_flood)
+    # 2. Tinh Shannon Entropy cho Destination Port (Danh cho s04_http_flood)
     total_dst_pkts_delta = sum(dst_port_counts.values())
     if total_dst_pkts_delta > 0:
         entropy_dst_port = -sum((c/total_dst_pkts_delta) * math.log2(c/total_dst_pkts_delta) for c in dst_port_counts.values())
     else:
-        entropy_dst_port = 3.4  # Giữ baseline khi mạng idle
+        entropy_dst_port = 3.4  # Giu baseline khi mang idle
 
     timestamp = time.strftime('%H:%M:%S')
     if total_src_pkts_delta == 0:
@@ -96,9 +96,9 @@ def extract_features(flows):
     features = {
         "pps": pps, 
         "bps": pps * 800, 
-        "entropy_src": round(entropy_src_ip, 3),        # Fix tên biến khớp với attack_signatures.csv
-        "entropy_src_ip": round(entropy_src_ip, 3),     # Giữ lại để không bị lỗi tương thích
-        "entropy_dst_port": round(entropy_dst_port, 3), # Fix thiếu feature port
+        "entropy_src": round(entropy_src_ip, 3),        # Fix ten bien khop voi attack_signatures.csv
+        "entropy_src_ip": round(entropy_src_ip, 3),     # Giu lai de khong bi loi tuong thich
+        "entropy_dst_port": round(entropy_dst_port, 3), # Fix thieu feature port
         "syn_pct": round(syn_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0, 
         "icmp_pct": round(icmp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
         "suspect_src_ip": src_ip_counts.most_common(1)[0][0] if src_ip_counts else "10.0.1.10"
@@ -125,7 +125,7 @@ def main():
                     json.dump(features, f)
                 os.replace(temp_path, JSON_PATH)
                 
-                # Luôn chạy detection pipeline (bỏ skip pps<1 để dashboard có dữ liệu)
+                # Luon chay detection pipeline (bo skip pps<1 de dashboard co du lieu)
                 
                 ent_res = ent_det.check(features)
                 stat_res = stat_det.check(features)

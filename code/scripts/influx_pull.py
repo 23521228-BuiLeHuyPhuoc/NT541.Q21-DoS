@@ -2,21 +2,21 @@ from influxdb_client import InfluxDBClient
 import csv
 import os
 
-# --- CẤU HÌNH INFLUXDB ---
+# --- CAU HINH INFLUXDB ---
 INFLUX_TOKEN = "2Bdyw5xOnRrLQK-s7NFS0IxylcXDSt86UhpqFr-H4moUw4nxR-QxmsD5LkNQHMcC66hk7A9X-NUvk7iNk4MNvQ==" 
 INFLUX_URL = "http://localhost:8086"
 ORG = "sdn"
 BUCKET = "sdn"
 
-# 1. Đảm bảo thư mục tồn tại
+# 1. Dam bao thu muc ton tai
 os.makedirs('datasets/features', exist_ok=True)
 
-# 2. Kết nối InfluxDB bằng chìa khóa
+# 2. Ket noi InfluxDB bang chia khoa
 client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=ORG)
 q = f'''from(bucket:"{BUCKET}") |> range(start:-30m)
        |> filter(fn:(r)=> r._measurement=="entropy")'''
 
-# 3. Kéo dữ liệu và lưu CSV
+# 3. Keo du lieu va luu CSV
 try:
     tables = client.query_api().query(q)
     with open('datasets/features/realtime.csv', 'w', newline='') as f:

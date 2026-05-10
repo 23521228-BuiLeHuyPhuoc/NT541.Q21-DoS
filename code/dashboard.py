@@ -11,7 +11,7 @@ RYU_ENTROPY_URL = "http://127.0.0.1:8081/api/entropy"
 RYU_FLOW_URL = "http://127.0.0.1:8081/stats/flow/2"
 
 def _compute_entropy_from_ryu():
-    """Đọc entropy trực tiếp từ Ryu controller — cùng giá trị với Ryu log."""
+    """Doc entropy truc tiep tu Ryu controller -- cung gia tri voi Ryu log."""
     try:
         resp = requests.get(RYU_ENTROPY_URL, timeout=2)
         data = resp.json()
@@ -25,7 +25,7 @@ def _compute_entropy_from_ryu():
         return 0.0, f"Ryu error: {e}"
 
 # ==========================================
-# 1. TRANG CHÍNH - BIỂU ĐỒ ENTROPY
+# 1. TRANG CHINH - BIEU DO ENTROPY
 # ==========================================
 @app.route('/')
 def home(): 
@@ -40,7 +40,7 @@ def stats():
     now_str = datetime.now().strftime('%H:%M:%S')
     entropy_history.append({"label": now_str, "value": current_entropy})
     
-    # Giữ lại 30 điểm gần nhất cho mượt
+    # Giu lai 30 diem gan nhat cho muot
     if len(entropy_history) > 30: 
         entropy_history.pop(0)
     
@@ -54,7 +54,7 @@ def stats():
     })
 
 # ==========================================
-# 2. TRANG ALERTS (Danh sách cảnh báo)
+# 2. TRANG ALERTS (Danh sach canh bao)
 # ==========================================
 @app.route('/alerts')
 def alerts_page():
@@ -67,7 +67,7 @@ def alerts_page():
                 if line.strip():
                     try:
                         al = json.loads(line)
-                        # Xác định hành động (Action) dựa trên rule threshold trong policy.yaml
+                        # Xac dinh hanh dong (Action) dua tren rule threshold trong policy.yaml
                         n_rules = al.get("n_rules", 1)
                         if n_rules >= 3 or al.get("severity") == "CRITICAL":
                             action = "Blocked"
@@ -86,17 +86,17 @@ def alerts_page():
                     except Exception as e: 
                         pass
                         
-    # Đảo ngược danh sách để đưa cảnh báo mới nhất lên đầu bảng
+    # Dao nguoc danh sach de dua canh bao moi nhat len dau bang
     return render_template('alerts.html', alerts=alerts_data[::-1])
 
 # ==========================================
-# 3. TRANG FLOWS (Danh sách OpenFlow rules)
+# 3. TRANG FLOWS (Danh sach OpenFlow rules)
 # ==========================================
 @app.route('/flows')
 def flows_page():
     flows_data =[]
     try:
-        # Lấy flow thống kê từ Switch s2 (Datapath ID = 2) thông qua Ryu REST API
+        # Lay flow thong ke tu Switch s2 (Datapath ID = 2) thong qua Ryu REST API
         resp = requests.get("http://127.0.0.1:8081/stats/flow/2", timeout=2)
         if resp.status_code == 200:
             flows_data = resp.json().get("2", [])
@@ -106,17 +106,17 @@ def flows_page():
     return render_template('flows.html', dpid=2, flows=flows_data)
 
 # ==========================================
-# 4. ENDPOINT MANUAL BLOCK (Chặn IP thủ công)
+# 4. ENDPOINT MANUAL BLOCK (Chan IP thu cong)
 # ==========================================
 @app.route('/api/block', methods=['POST'])
 def manual_block():
     try:
         ip = request.json['src_ip']
         if not ip:
-            return jsonify({"ok": False, "error": "Thiếu thông tin IP"})
+            return jsonify({"ok": False, "error": "Thieu thong tin IP"})
             
-        # Theo policy.yaml, hệ thống yêu cầu threshold=3 mới thực hiện Block (cấp độ 3)
-        # Do đó chúng ta gửi ép 3 requests liên tiếp sang Ryu Controller để đạt mức Block ngay lập tức.
+        # Theo policy.yaml, he thong yeu cau threshold=3 moi thuc hien Block (cap do 3)
+        # Do do chung ta gui ep 3 requests lien tiep sang Ryu Controller de dat muc Block ngay lap tuc.
         for _ in range(3):
             requests.post('http://127.0.0.1:8081/api/alert',
                           json={"src_ip": ip, "attack": "manual_block", "severity": "CRITICAL"}, 
@@ -128,7 +128,7 @@ def manual_block():
         return jsonify({"ok": False, "error": str(e)})
 
 # ==========================================
-# 5. DEBUG - XEM RAW DATA TỪ RYU
+# 5. DEBUG - XEM RAW DATA TU RYU
 # ==========================================
 @app.route('/api/debug')
 def debug_ryu():
@@ -154,7 +154,7 @@ def debug_ryu():
         except Exception as e:
             result[f"switch_{dpid}"] = {"error": str(e)}
     
-    # Thêm thông tin entropy computation
+    # Them thong tin entropy computation
     entropy_val, entropy_info = _compute_entropy_from_ryu()
     result["entropy_result"] = {"value": entropy_val, "info": entropy_info}
     result["prev_flow_count_keys"] = len(_prev_flow_counts)
@@ -162,8 +162,8 @@ def debug_ryu():
     return jsonify(result)
 
 # ==========================================
-# KHỞI CHẠY FLASK SERVER
+# KHOI CHAY FLASK SERVER
 # ==========================================
 if __name__ == '__main__':
-    # Chạy trên mọi interface (0.0.0.0) cổng 8080
+    # Chay tren moi interface (0.0.0.0) cong 8080
     app.run(host='0.0.0.0', port=8080, debug=True)

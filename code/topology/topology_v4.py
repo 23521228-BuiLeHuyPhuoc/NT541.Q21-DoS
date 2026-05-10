@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-topology_v4.py — TV2 (Phúc) — Task 2.1 & 2.2
+topology_v4.py -- TV2 (Phuc) -- Task 2.1 & 2.2
 Topology V4: 12 hosts, 5 switches, OF1.3, QoS+Mirror ON.
-Dùng để mô phỏng mạng và thu thập dữ liệu tấn công DoS.
+Dung de mo phong mang va thu thap du lieu tan cong DoS.
 """
 
 import os
@@ -14,17 +14,17 @@ from mininet.link import TCLink
 from mininet.cli import CLI
 from mininet.log import setLogLevel, info
 
-# --- CẤU HÌNH HỆ THỐNG ---
+# --- CAU HINH HE THONG ---
 CTRL_IP = '127.0.0.1'
 CTRL_PORT = 6653
 OF_PROTO = 'OpenFlow13'
 MIRROR_PORT = 99  # s2-eth99
 
-# --- THÔNG SỐ ĐƯỜNG TRUYỀN ---
-LINK_EXT  = dict(bw=10,  delay='2ms')   # Nhánh Attacker (Bóp băng thông)
-LINK_SRV  = dict(bw=100, delay='1ms')   # Nhánh Server
-LINK_PC   = dict(bw=50,  delay='1ms')   # Nhánh PC thường
-LINK_HOST = dict(bw=100, delay='0.5ms') # Từ Host đến Switch
+# --- THONG SO DUONG TRUYEN ---
+LINK_EXT  = dict(bw=10,  delay='2ms')   # Nhanh Attacker (Bop bang thong)
+LINK_SRV  = dict(bw=100, delay='1ms')   # Nhanh Server
+LINK_PC   = dict(bw=50,  delay='1ms')   # Nhanh PC thuong
+LINK_HOST = dict(bw=100, delay='0.5ms') # Tu Host den Switch
 
 def build_topology():
     net = Mininet(controller=RemoteController, switch=OVSKernelSwitch,
@@ -41,34 +41,34 @@ def build_topology():
     s5 = net.addSwitch('s5', dpid='0000000000000005', protocols=OF_PROTO)  
 
     info('*** Adding Hosts\n')
-    # Nhánh External/Attacker (nối vào s1)
+    # Nhanh External/Attacker (noi vao s1)
     h_att1 = net.addHost('h_att1', ip='10.0.1.10/24', defaultRoute='via 10.0.1.1')
     h_att2 = net.addHost('h_att2', ip='10.0.1.11/24', defaultRoute='via 10.0.1.1')
     h_att3 = net.addHost('h_att3', ip='10.0.1.12/24', defaultRoute='via 10.0.1.1')
     h_ext1 = net.addHost('h_ext1', ip='10.0.1.20/24', defaultRoute='via 10.0.1.1')
 
-    # Nhánh Web/DNS Server (nối vào s3)
+    # Nhanh Web/DNS Server (noi vao s3)
     h_web1 = net.addHost('h_web1', ip='10.0.2.10/24', defaultRoute='via 10.0.2.1')
     h_dns1 = net.addHost('h_dns1', ip='10.0.2.11/24', defaultRoute='via 10.0.2.1')
 
-    # Nhánh App/DB Server (nối vào s4)
+    # Nhanh App/DB Server (noi vao s4)
     h_db1  = net.addHost('h_db1',  ip='10.0.3.10/24', defaultRoute='via 10.0.3.1')
     h_app1 = net.addHost('h_app1', ip='10.0.3.11/24', defaultRoute='via 10.0.3.1')
 
-    # Nhánh Client PC (nối vào s5)
+    # Nhanh Client PC (noi vao s5)
     h_pc1 = net.addHost('h_pc1', ip='10.0.4.10/24', defaultRoute='via 10.0.4.1')
     h_pc2 = net.addHost('h_pc2', ip='10.0.4.11/24', defaultRoute='via 10.0.4.1')
     h_pc3 = net.addHost('h_pc3', ip='10.0.4.12/24', defaultRoute='via 10.0.4.1')
     h_pc4 = net.addHost('h_pc4', ip='10.0.4.13/24', defaultRoute='via 10.0.4.1')
 
     info('*** Creating Links\n')
-    # Liên kết giữa các Switch
+    # Lien ket giua cac Switch
     net.addLink(s1, s2, cls=TCLink, **LINK_EXT)  
     net.addLink(s3, s2, cls=TCLink, **LINK_SRV)  
     net.addLink(s4, s2, cls=TCLink, **LINK_SRV)  
     net.addLink(s5, s2, cls=TCLink, **LINK_PC)   
 
-    # Liên kết Host vào Switch
+    # Lien ket Host vao Switch
     for h in (h_att1, h_att2, h_att3, h_ext1):
         net.addLink(h, s1, cls=TCLink, **LINK_HOST)
     net.addLink(h_web1, s3, cls=TCLink, **LINK_HOST)
@@ -81,7 +81,7 @@ def build_topology():
     return net
 
 def setup_qos():
-    """Thiết lập Linux HTB QoS trên cổng s2-eth1 (Cổng chính ra Internet)"""
+    """Thiet lap Linux HTB QoS tren cong s2-eth1 (Cong chinh ra Internet)"""
     info('*** Configuring HTB QoS on s2-eth1\n')
     os.system(
         'ovs-vsctl -- set port s2-eth1 qos=@newqos '
@@ -94,7 +94,7 @@ def setup_qos():
     )
 
 def setup_mirror():
-    """Thiết lập Port Mirroring: Toàn bộ traffic qua s2-eth1 sẽ copy sang s2-eth99"""
+    """Thiet lap Port Mirroring: Toan bo traffic qua s2-eth1 se copy sang s2-eth99"""
     info('*** Setting up port mirror s2-eth1 -> s2-eth%d\n' % MIRROR_PORT)
     os.system(f'ip link add s2-eth{MIRROR_PORT} type dummy 2>/dev/null || true')
     os.system(f'ip link set s2-eth{MIRROR_PORT} up')
@@ -107,7 +107,7 @@ def setup_mirror():
     )
 
 def cleanup_qos_mirror():
-    """Dọn dẹp cấu hình QoS và Mirror khi thoát để tránh lỗi device busy"""
+    """Don dep cau hinh QoS va Mirror khi thoat de tranh loi device busy"""
     info('*** Cleaning QoS + mirror\n')
     os.system('ovs-vsctl -- --all destroy qos -- --all destroy queue')
     os.system('ovs-vsctl clear bridge s2 mirrors')
@@ -133,8 +133,8 @@ def main():
         net.stop()
 
 if __name__ == '__main__':
-    # Kiểm tra quyền root
+    # Kiem tra quyen root
     if os.geteuid() != 0:
-        print('Phải chạy với sudo (Mininet cần quyền root).')
+        print('Phai chay voi sudo (Mininet can quyen root).')
         sys.exit(1)
     main()

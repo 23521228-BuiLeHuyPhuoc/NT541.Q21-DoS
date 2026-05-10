@@ -17,7 +17,7 @@ class BlockModule:
         self.app.logger.warning(f"[BLOCK] {src_ip} for {timeout}s")
 
 class RateLimitModule:
-    """Meter Table OF1.3 — yêu cầu protocols='OpenFlow13'."""
+    """Meter Table OF1.3 -- yeu cau protocols='OpenFlow13'."""
     def __init__(self, app):
         self.app = app
         self.meter_ids = {}

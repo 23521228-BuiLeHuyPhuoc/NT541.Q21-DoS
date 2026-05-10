@@ -33,7 +33,7 @@ class EntropyDetector:
         return {"anomaly": len(alerts) > 0, "alerts": alerts}
 
     def update_baseline(self):
-        """Gọi mỗi 5' nếu KHÔNG có alert — adaptive baseline."""
+        """Goi moi 5' neu KHONG co alert -- adaptive baseline."""
         if len(self.recent) < 60: return
         import statistics
         for key in self.mu:

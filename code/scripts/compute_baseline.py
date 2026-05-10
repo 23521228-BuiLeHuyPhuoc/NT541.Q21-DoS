@@ -5,17 +5,17 @@ import os
 import statistics
 from collections import Counter
  
-# Kiểm tra scapy
+# Kiem tra scapy
 try:
     from scapy.all import PcapReader, IP, TCP, UDP
     HAS_SCAPY = True
 except ImportError:
-    print("[ERROR] Scapy chưa cài. Chạy: pip3 install scapy")
+    print("[ERROR] Scapy chua cai. Chay: pip3 install scapy")
     sys.exit(1)
  
  
 def shannon_entropy(items):
-    """Tính Shannon entropy của danh sách items."""
+    """Tinh Shannon entropy cua danh sach items."""
     if not items:
         return 0.0
     c = Counter(items)
@@ -30,23 +30,23 @@ def shannon_entropy(items):
  
 def compute_baseline(pcap_path, window_sec=1.0, output_path=None):
     """
-    Đọc pcap, chia window 1s, tính pps/bps/entropy_src/entropy_dport.
-    Trả về dict stats với mean và std.
+    Doc pcap, chia window 1s, tinh pps/bps/entropy_src/entropy_dport.
+    Tra ve dict stats voi mean va std.
     """
-    print(f"[INFO] Đang đọc: {pcap_path}")
+    print(f"[INFO] Dang doc: {pcap_path}")
  
     if not os.path.exists(pcap_path):
-        print(f"[ERROR] File không tồn tại: {pcap_path}")
+        print(f"[ERROR] File khong ton tai: {pcap_path}")
         sys.exit(1)
  
-    # Thu thập tất cả packet với timestamp
+    # Thu thap tat ca packet voi timestamp
     packets = []
     total_read = 0
     with PcapReader(pcap_path) as reader:
         for pkt in reader:
             total_read += 1
             if total_read % 10000 == 0:
-                print(f"  Đã đọc {total_read} gói...")
+                print(f"  Da doc {total_read} goi...")
             if pkt.haslayer(IP):
                 ts = float(pkt.time)
                 size = len(pkt)
@@ -59,16 +59,16 @@ def compute_baseline(pcap_path, window_sec=1.0, output_path=None):
                 packets.append((ts, size, src_ip, dport))
  
     if len(packets) < 10:
-        print(f"[ERROR] Quá ít packet IP ({len(packets)}). Kiểm tra lại pcap.")
+        print(f"[ERROR] Qua it packet IP ({len(packets)}). Kiem tra lai pcap.")
         sys.exit(1)
  
-    print(f"[INFO] Tổng gói IP: {len(packets)}")
+    print(f"[INFO] Tong goi IP: {len(packets)}")
  
-    # Tính features theo window 1s
+    # Tinh features theo window 1s
     t_start = packets[0][0]
     t_end   = packets[-1][0]
     total_duration = t_end - t_start
-    print(f"[INFO] Thời gian capture: {total_duration:.1f}s ({total_duration/60:.1f} phút)")
+    print(f"[INFO] Thoi gian capture: {total_duration:.1f}s ({total_duration/60:.1f} phut)")
  
     pps_list      = []
     bps_list      = []
@@ -95,12 +95,12 @@ def compute_baseline(pcap_path, window_sec=1.0, output_path=None):
         t += window_sec
  
     if len(pps_list) < 2:
-        print("[ERROR] Không đủ window để tính stats. Cần pcap dài hơn.")
+        print("[ERROR] Khong du window de tinh stats. Can pcap dai hon.")
         sys.exit(1)
  
-    print(f"[INFO] Số window (1s): {len(pps_list)}")
+    print(f"[INFO] So window (1s): {len(pps_list)}")
  
-    # Tính mean và std
+    # Tinh mean va std
     def stats(lst):
         return {
             "mean": round(statistics.mean(lst), 4),
@@ -114,12 +114,12 @@ def compute_baseline(pcap_path, window_sec=1.0, output_path=None):
         "entropy_dport": stats(entropy_dport_list)
     }
  
-    # In kết quả
+    # In ket qua
     print("\n[BASELINE STATS]")
     for k, v in baseline.items():
         print(f"  {k:20s}: mean={v['mean']:.4f}, std={v['std']:.4f}")
  
-    # Lưu file
+    # Luu file
     if output_path is None:
         output_path = "tests/fixtures/baseline.json"
  
@@ -127,13 +127,13 @@ def compute_baseline(pcap_path, window_sec=1.0, output_path=None):
     with open(output_path, 'w') as f:
         json.dump(baseline, f, indent=2)
  
-    print(f"\n[OK] Đã lưu baseline → {output_path}")
+    print(f"\n[OK] Da luu baseline -> {output_path}")
     return baseline
  
  
 def generate_mock_baseline(output_path="tests/fixtures/baseline.json"):
     """
-    Tạo baseline.json giả (dùng khi chưa có pcap thật)
+    Tao baseline.json gia (dung khi chua co pcap that)
     """
     mock = {
         "pps":           {"mean": 50.0,  "std": 10.0},
@@ -144,7 +144,7 @@ def generate_mock_baseline(output_path="tests/fixtures/baseline.json"):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump(mock, f, indent=2)
-    print(f"[OK] Đã tạo mock baseline → {output_path}")
+    print(f"[OK] Da tao mock baseline -> {output_path}")
     return mock
  
  

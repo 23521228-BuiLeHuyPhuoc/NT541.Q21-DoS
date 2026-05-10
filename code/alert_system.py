@@ -9,7 +9,7 @@ LOG_PATH = os.path.join(_BASE_DIR, '..', 'results', 'raw', 'alerts.json')
 class AlertSystem:
     def __init__(self):
         self.last_seen = defaultdict(float)
-        # Đảm bảo thư mục lưu log tồn tại
+        # Dam bao thu muc luu log ton tai
         os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
     def severity(self, n_rules):

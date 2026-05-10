@@ -39,7 +39,7 @@ class StatsDetector:
         alerts =[]
         for key in ('pps', 'bps', 'new_flows_per_sec'):
             if key not in features: continue
-            if key not in self.mu: continue  # Safeguard tránh KeyError
+            if key not in self.mu: continue  # Safeguard tranh KeyError
             for fn in (self.zscore, self.ewma_check, self.cusum_check):
                 r = fn(key, features[key])
                 if r["alert"]: alerts.append(r)
