@@ -80,7 +80,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             del self.dps[dp.id]
             self.logger.info("[RYU] Switch s%d (dpid=%d) da ngat ket noi", dp.id, dp.id)
 
-# KIEM TRA ENTROPY DE PHAT HIEN TRAFFIC BAT THUONG 
+# TINH ENTROPY CHO DASHBOARD (Khong block -- de detector.py + l3_router_extended.py xu ly)
     def _monitor_entropy(self):
         while True:
             hub.sleep(3)
@@ -88,75 +88,29 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             current_rate = self.packet_rate
             self.packet_rate = 0
             entropy = 0.0
-            current_pps = self.total_pps
             window_size = len(self.src_ip_window)
 
-            # Can it nhat 100 goi de entropy co y nghia thong ke.
-            # Khi pingall chi tao ~12-20 goi/3s -> entropy thap la binh thuong (it IP),
-            # KHONG PHAI tan cong. Chi tinh entropy khi co du traffic.
-            if window_size >= 100 and current_rate >= 50:
+            if window_size >= 10:
                 ip_counts = Counter(self.src_ip_window)
                 total = len(self.src_ip_window)
-
                 for count in ip_counts.values():
                     p = count / total
                     entropy -= p * math.log2(p)
-
                 self.last_entropy = entropy
-
-
-                if entropy < self.ENTROPY_LOW:
-                    self.attack_status = 1
-                    # PHAN LOAI TAN CONG dua tren protocol
-                    attack_type = self._classify_attack()
-                    self.logger.warning("[CANH BAO] %s! Entropy = %.2f (nguong < %.2f)", attack_type, entropy, self.ENTROPY_LOW)
-                    for ip, count in ip_counts.items():
-                        if (count / total) > 0.20 and ip not in self.blocked_ips:
-                            if ip in self.WHITELIST_SRC:
-                                continue
-                            self.logger.warning("[BLOCK] Chan IP %s — da gui %d goi (chiem %.1f%% tong traffic)", ip, count, (count/total)*100)
-                            self._block_ip(ip)
-                            self._log_alert(ip, attack_type, "CRITICAL", "Blocked")
-
-                elif entropy > self.ENTROPY_HIGH:
-                    self.attack_status = 2
-                    mac_counts = Counter(self.src_mac_window)
-                    top_mac, top_count = mac_counts.most_common(1)[0] if mac_counts else (None, 0)
-                    
-                    # s06 vs s08: neu 1 MAC chiem >50% -> spoof (s06), nguoc lai -> flash crowd (s08)
-                    if top_count / total > 0.5:
-                        attack_type = "s06_ip_spoof"
-                        self.logger.warning("[CANH BAO] %s! Entropy = %.2f (nguong > %.2f)", attack_type, entropy, self.ENTROPY_HIGH)
-                        for mac, count in mac_counts.most_common():
-                            if mac not in self.blocked_macs:
-                                self.logger.warning("[BLOCK] Chan MAC %s — da gui %d goi spoof (chiem %.1f%% tong traffic)", mac, count, (count/total)*100)
-                                self._block_mac(mac)
-                                self._log_alert(mac, attack_type, "CRITICAL", "Blocked")
+                # Chi cap nhat trang thai cho dashboard, KHONG block
+                if window_size >= 100 and current_rate >= 50:
+                    if entropy < self.ENTROPY_LOW:
+                        self.attack_status = 1
+                    elif entropy > self.ENTROPY_HIGH:
+                        self.attack_status = 2
                     else:
-                        attack_type = "s08_flash_crowd"
-                        self.logger.warning("[CANH BAO] %s! Entropy = %.2f — nhieu nguoi dung thuc truy cap dong thoi", attack_type, entropy)
-                        self._log_alert("multiple_ips", attack_type, "WARN", "Logged")
+                        self.attack_status = 0
                 else:
                     self.attack_status = 0
-
-                # LUON clear window sau moi chu ky 3s de entropy phan anh traffic HIEN TAI
-                self.src_ip_window.clear()
-                self.src_mac_window.clear()
-                self.proto_window.clear()
-            elif window_size >= 10:
-                # Co traffic nhung chua du de ket luan -> chi tinh entropy, KHONG block
-                ip_counts = Counter(self.src_ip_window)
-                total = len(self.src_ip_window)
-                for count in ip_counts.values():
-                    p = count / total
-                    entropy -= p * math.log2(p)
-                self.last_entropy = entropy
-                self.attack_status = 0  # Khong du traffic de ket luan tan cong
                 self.src_ip_window.clear()
                 self.src_mac_window.clear()
                 self.proto_window.clear()
             else:
-                # Qua it goi (<10) trong 3s vua qua -> coi nhu idle
                 self.last_entropy = 0.0
                 self.attack_status = 0
 
@@ -282,13 +236,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     pps = (stat.packet_count - prev[0]) / delta
                     if pps > 0:
                         sum_pps += pps
-                    if pps > 500 and src not in self.blocked_ips:
-                        # Grace period: khong block trong 30s dau sau khi khoi dong
-                        if time.time() - self._startup_time < 30:
-                            continue
-                        self.logger.warning("[BLOCK] Chan IP %s — toc do qua cao: %d goi/giay (nguong: 500)", src, int(pps))
-                        self._block_ip(src)
-                        self._log_alert(src, "high_pps_flood", "WARN", "Blocked")
+                    # Khong block o day — de detector.py + l3_router_extended.py xu ly
             self.flow_stats[key] = (stat.packet_count, now)
         self.total_pps = int(sum_pps)
 

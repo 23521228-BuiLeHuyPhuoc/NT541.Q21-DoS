@@ -9,6 +9,8 @@ logging.getLogger('ryu.app.simple_switch_13').setLevel(logging.WARNING)
 logging.getLogger('ryu.app.ofctl_rest').setLevel(logging.WARNING)
 logging.getLogger('eventlet.wsgi.server').setLevel(logging.WARNING)
 logging.getLogger('ryu.lib.hub').setLevel(logging.WARNING)
+logging.getLogger('SimpleSwitch13').setLevel(logging.WARNING)
+logging.getLogger('wsgi').setLevel(logging.WARNING)
 
 from ryu.ofproto import ofproto_v1_3
 from ryu.app.wsgi import WSGIApplication, ControllerBase, route, Response
