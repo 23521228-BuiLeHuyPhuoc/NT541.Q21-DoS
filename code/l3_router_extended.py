@@ -81,29 +81,32 @@ class L3RouterExtended(SimpleRouterEntropy):
         action = payload.get('action', 'Logged')
         is_spoof = 'spoof' in attack.lower()
 
+        # Chi thao tac tren switch s2 (dpid=2) — switch phat hien
+        # Khong can block tren tat ca switch, tranh anh huong L2 flows
+        dp = self.dps.get(2)
+        if not dp:
+            self.logger.error("[MITIGATION] Switch s2 chua ket noi!")
+            return
+
         if action == 'Logged':
             self.logger.warning(f"[MITIGATION] Cap 1/3: GHI NHAN — {src} ({attack})")
 
         elif action == 'Rate-Limited':
             self.logger.warning(f"[MITIGATION] Cap 2/3: RATE-LIMIT — {src} (1000 pps)")
-            for dp in self.dps.values():
-                self.ratelimit.apply(dp, src, pps=1000)
+            self.ratelimit.apply(dp, src, pps=1000)
 
         else:  # Blocked
             if is_spoof:
                 src_mac = self._find_mac_for_ip(src)
                 if src_mac:
                     self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK MAC — {src_mac} ({attack}, 30s)")
-                    for dp in self.dps.values():
-                        self._block_mac(dp, src_mac, timeout=30)
+                    self._block_mac(dp, src_mac, timeout=30)
                 else:
                     self.logger.warning(f"[MITIGATION] Cap 3/3: BLOCK IP — {src} ({attack}, 30s)")
-                    for dp in self.dps.values():
-                        self.block.apply(dp, src, timeout=30)
+                    self.block.apply(dp, src, timeout=30)
             else:
                 self.logger.warning(f"[MITIGATION] Cap 3/3: CHAN IP — {src} ({attack}, 30s)")
-                for dp in self.dps.values():
-                    self.block.apply(dp, src, timeout=30)
+                self.block.apply(dp, src, timeout=30)
             self.blacklist.add(src, ttl=30)
 
     def _find_mac_for_ip(self, ip):
