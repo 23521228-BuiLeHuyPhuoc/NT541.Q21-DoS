@@ -232,14 +232,14 @@ def main():
                     if not _skip_logged:
                         print(f"[{time.strftime('%H:%M:%S')}] [SKIP] Traffic thap ({total_pkts} < {MIN_PKTS_FOR_ALERT} pkts)")
                         _skip_logged = True
-                    _current_attack = None
-                    _attack_count = 0
+                    # CHI reset khi chua co attack hoac da qua pha block
+                    if _current_attack is None or _attack_count > 4:
+                        _current_attack = None
+                        _attack_count = 0
                 elif n_rules > 0:
                     _skip_logged = False
                     src_ip = features["suspect_src_ip"]
 
-                    # Lan dau phat hien: ghi nhan attack_type
-                    # Sau do GIU NGUYEN type — khong doi khi flow stats thay doi do rate-limit/block
                     if _current_attack is None:
                         _current_attack = attack_type
                         _attack_count = 0
@@ -247,22 +247,26 @@ def main():
 
                     _attack_count += 1
 
+                    # 3 cap lien tiep: 1s LOG, 2s RATE-LIMIT, 3s BLOCK
                     if _attack_count == 1:
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 1/3: GHI NHAN - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=1)
-                    elif _attack_count == 4:
+                    elif _attack_count == 2:
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 2/3: RATE-LIMIT - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=2)
-                    elif _attack_count == 7:
+                    elif _attack_count == 3:
                         print(f"[{time.strftime('%H:%M:%S')}] >>> Cap 3/3: CHAN IP - {_current_attack} ({src_ip})")
                         alr.emit(src_ip, _current_attack, n_rules, evidence, level=3)
-                    elif _attack_count > 7 and (_attack_count - 7) % 5 == 0:
-                        print(f"[{time.strftime('%H:%M:%S')}] ... {attack_type} tiep tuc ({src_ip} da bi chan)")
+                    elif _attack_count == 4:
+                        print(f"[{time.strftime('%H:%M:%S')}] ... {_current_attack} da bi chan. Cho het timeout (30s)...")
                 else:
+                    # Khong co anomaly — chi reset sau 3 cycle lien tiep khong attack
                     if _current_attack is not None:
-                        print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc: {_current_attack}")
-                        _current_attack = None
-                        _attack_count = 0
+                        _attack_count += 1  # dung lai bien nay de dem so cycle khong attack
+                        if _attack_count > 10:  # 10 cycle (~10s) khong attack moi reset
+                            print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc: {_current_attack}")
+                            _current_attack = None
+                            _attack_count = 0
             except Exception as e:
                 print(f"[detector] Loi: {e}", flush=True)
             time.sleep(1)
