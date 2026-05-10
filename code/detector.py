@@ -12,7 +12,7 @@ JSON_PATH = os.path.join(_BASE_DIR, "..", "results", "raw", "current_features.js
 # --- Nguong toi thieu de tranh false positive khi traffic thap (vd: pingall) ---
 # Entropy chi co y nghia thong ke khi co du goi tin trong 1 chu ky.
 # Duoi nguong nay, entropy thap la do it goi, KHONG PHAI do tan cong.
-MIN_PKTS_FOR_ALERT = 100   # Pingall ~16-40 pkts, flood 4000+
+MIN_PKTS_FOR_ALERT = 50    # Pingall ~16-40 pkts, slowloris ~100, flood 4000+
 WARMUP_CYCLES = 5          # So chu ky dau khong alert
 
 last_total_packets = 0
@@ -219,19 +219,21 @@ def main():
                 elif n_rules > 0:
                     # Fallback: suy doan attack type tu features kha dung
                     pps_val = features.get("pps", 0)
+                    entropy_val = features.get("entropy_src", 5)
                     if features.get("icmp_pct", 0) > 0.3:
                         attack_type = "icmp_flood"
                     elif features.get("udp_pct", 0) > 0.3:
                         attack_type = "udp_flood"
                     elif features.get("tcp_pct", 0) > 0.3 and pps_val > 500:
                         attack_type = "tcp_flood"
-                    elif features.get("entropy_src", 5) < 1.0 and pps_val > 500:
+                    elif entropy_val < 1.0 and pps_val > 500:
                         attack_type = "single_src_flood"
                     elif features.get("entropy_src", 0) > 3.5:
                         attack_type = "spoofed_flood"
+                    elif features.get("tcp_pct", 0) > 0.3 and pps_val > 30 and entropy_val < 1.5:
+                        attack_type = "s07_slowloris"
                     else:
-                        # Traffic co anomaly nhung PPS thap -> co the la flash crowd hoac traffic binh thuong
-                        # Khong alert, chi ghi nhan
+                        # Traffic co anomaly nhung khong match pattern nao
                         n_rules = 0  # Reset de khong trigger alert
                 
                 # --- GUARD: Chi alert khi traffic du lon ---
