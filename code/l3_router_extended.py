@@ -34,6 +34,8 @@ class L3RouterExtended(SimpleRouterEntropy):
         self.block = BlockModule(self)
         self.ratelimit = RateLimitModule(self)
         self.blacklist = BlacklistManager(self)
+        self._startup_time = time.time()  # Thoi diem khoi dong
+        self._GRACE_PERIOD = 30           # 30s dau KHONG xu ly alert nao
 
     def _load_whitelist(self, path):
         try:
@@ -49,6 +51,14 @@ class L3RouterExtended(SimpleRouterEntropy):
         src = payload.get('src_ip')
         if not src: return
         
+        # --- GRACE PERIOD: Bo qua alert trong 30s dau sau khi Ryu khoi dong ---
+        # Khi moi khoi dong, flow table chua on dinh, detector.py co the
+        # gui false alert do entropy/stats chua chinh xac.
+        elapsed = time.time() - self._startup_time
+        if elapsed < self._GRACE_PERIOD:
+            self.logger.info(f"[GRACE] Bo qua alert {src} (con {int(self._GRACE_PERIOD - elapsed)}s)")
+            return
+        
         if src in self.WHITELIST_SRC:
             return
             
@@ -61,17 +71,18 @@ class L3RouterExtended(SimpleRouterEntropy):
         n = self.violation_count[src]
         attack = payload.get('attack', 'unknown')
         
-        for dp in self.dps.values():
-            if n == 1:
-                self.logger.warning(f"[ALERT] {src} attack={attack}")
-                self._log_alert(src, attack, "INFO", "Logged")
-            elif n == 2:
+        if n == 1:
+            self.logger.warning(f"[ALERT] {src} attack={attack}")
+            self._log_alert(src, attack, "INFO", "Logged")
+        elif n == 2:
+            for dp in self.dps.values():
                 self.ratelimit.apply(dp, src, pps=1000)
-                self._log_alert(src, attack, "WARN", "Rate-Limited")
-            else:
+            self._log_alert(src, attack, "WARN", "Rate-Limited")
+        else:
+            for dp in self.dps.values():
                 self.block.apply(dp, src, timeout=60)
-                self.blacklist.add(src, ttl=60)
-                self._log_alert(src, attack, "CRITICAL", "Blocked")
+            self.blacklist.add(src, ttl=60)
+            self._log_alert(src, attack, "CRITICAL", "Blocked")
 
 class AlertAPI(ControllerBase):
     def __init__(self, req, link, data, **config):
