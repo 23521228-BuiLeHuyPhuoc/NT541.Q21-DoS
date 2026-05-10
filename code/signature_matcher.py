@@ -52,11 +52,16 @@ class SignatureMatcher:
             try:
                 rule_text = r.get('rule', '')
                 if safe_eval(rule_text, features):
+                    # Dem so dieu kien trong rule (so cac AND) de xac dinh do cu the
+                    n_conditions = rule_text.lower().count(' and ') + 1
                     hits.append({
                         "attack": r.get('name', 'unknown'), 
                         "rule": rule_text,
-                        "papers": r.get('papers','')
+                        "papers": r.get('papers',''),
+                        "_specificity": n_conditions
                     })
             except Exception:
                 pass
+        # Sap xep theo do cu the giam dan — rule co nhieu dieu kien hon duoc uu tien
+        hits.sort(key=lambda h: h.get("_specificity", 0), reverse=True)
         return hits

@@ -46,6 +46,8 @@ def extract_features(flows):
     dst_port_counts = Counter()
     icmp_packets = 0
     syn_packets = 0
+    udp_packets = 0
+    tcp_packets = 0
     
     current_flow_counts = {}
     
@@ -76,6 +78,10 @@ def extract_features(flows):
         ip_proto = match.get('ip_proto') or match.get('nw_proto')
         if ip_proto == 1:
             icmp_packets += delta_pkt
+        elif ip_proto == 17:
+            udp_packets += delta_pkt
+        elif ip_proto == 6:
+            tcp_packets += delta_pkt
             
         if match.get('tcp_flags') == 2:
             syn_packets += delta_pkt
@@ -113,13 +119,15 @@ def extract_features(flows):
     features = {
         "pps": pps, 
         "bps": pps * 800, 
-        "entropy_src": round(entropy_src_ip, 3),        # Fix ten bien khop voi attack_signatures.csv
-        "entropy_src_ip": round(entropy_src_ip, 3),     # Giu lai de khong bi loi tuong thich
-        "entropy_dst_port": round(entropy_dst_port, 3), # Fix thieu feature port
+        "entropy_src": round(entropy_src_ip, 3),
+        "entropy_src_ip": round(entropy_src_ip, 3),
+        "entropy_dst_port": round(entropy_dst_port, 3),
         "syn_pct": round(syn_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0, 
         "icmp_pct": round(icmp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
+        "udp_pct": round(udp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
+        "tcp_pct": round(tcp_packets / total_src_pkts_delta, 3) if total_src_pkts_delta > 0 else 0.0,
         "suspect_src_ip": src_ip_counts.most_common(1)[0][0] if src_ip_counts else "10.0.1.10",
-        "_total_pkts_delta": total_src_pkts_delta  # Dung de main() kiem tra traffic volume
+        "_total_pkts_delta": total_src_pkts_delta
     }
     return features
 
