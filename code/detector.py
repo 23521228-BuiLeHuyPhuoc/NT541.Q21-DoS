@@ -172,6 +172,7 @@ def main():
         while True:
             try:
                 global cycle_count, _current_attack, _attack_count, _warmup_logged, _skip_logged
+                global _consecutive_timeouts, _timeout_alert_sent
                 cycle_count += 1
                 
                 resp = requests.get(RYU_FLOW_URL, timeout=2)
@@ -270,7 +271,6 @@ def main():
                             _current_attack = None
                             _attack_count = 0
             except requests.exceptions.Timeout:
-                global _consecutive_timeouts, _timeout_alert_sent
                 _consecutive_timeouts += 1
                 print(f"[detector] Timeout #{_consecutive_timeouts} - Controller co the dang bi tan cong spoof", flush=True)
 
