@@ -1,12 +1,24 @@
+# Graduated Response Policy cho DDoS Mitigation
+# Moi cap duoc kich hoat khi so luong alert lien tiep >= threshold
+#
+# Cap 1: Log only - ghi nhan canh bao, khong can thiep
+# Cap 2: Rate limit - giam traffic attacker xuong 500 pps (~1 Mbps)
+#         Duration 120s, sau do tu dong go bo
+# Cap 3: Block - chan hoan toan IP attacker trong 60s
+#
+# Tham khao: Kumar 2018 (graduated response), RFC 4732 (DDoS taxonomy)
+
 graduated_response:
   - level: 1
     action: log
     threshold: 1
+
   - level: 2
     action: rate_limit
-    pps: 1000
+    pps: 500
     threshold: 2
     duration: 120
+
   - level: 3
     action: block
     threshold: 3
