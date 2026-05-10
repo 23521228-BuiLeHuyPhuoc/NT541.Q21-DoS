@@ -145,6 +145,21 @@ def main():
         stat_det = StatsDetector(baseline_path=baseline_path)
         sig_matcher = SignatureMatcher(csv_path=os.path.join(_BASE_DIR, '..', 'docs', 'attack_signatures.csv'))
         os.makedirs(os.path.dirname(JSON_PATH), exist_ok=True)
+
+        # Doi Ryu san sang truoc khi bat dau vong lap chinh
+        print(f"[{time.strftime('%H:%M:%S')}] [DETECTOR] Dang cho Ryu va Mininet khoi dong...")
+        while True:
+            try:
+                r = requests.get(RYU_FLOW_URL, timeout=2)
+                if r.status_code == 200 and r.text.strip():
+                    data = r.json()
+                    if "2" in data:
+                        break  # Switch s2 da san sang
+                print(f"[{time.strftime('%H:%M:%S')}] [DETECTOR] Switch s2 chua san sang, thu lai sau 3s...")
+            except Exception:
+                print(f"[{time.strftime('%H:%M:%S')}] [DETECTOR] Ryu chua san sang, thu lai sau 3s...")
+            time.sleep(3)
+
         print(f"[{time.strftime('%H:%M:%S')}] [DETECTOR] San sang. Theo doi switch s2 moi 1s...")
         
         while True:
@@ -153,7 +168,19 @@ def main():
                 cycle_count += 1
                 
                 resp = requests.get(RYU_FLOW_URL, timeout=2)
-                flows = resp.json().get("2",[])
+                
+                # Xu ly response rong hoac datapath chua san sang
+                if not resp.text.strip():
+                    time.sleep(1)
+                    continue
+                
+                data = resp.json()
+                if "2" not in data:
+                    # Switch s2 bi disconnect (vi du: mininet restart)
+                    time.sleep(2)
+                    continue
+                    
+                flows = data.get("2", [])
                 features = extract_features(flows)
                 
                 temp_path = JSON_PATH + ".tmp"
