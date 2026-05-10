@@ -161,6 +161,17 @@ def main():
                 if sig_hits:
                     n_rules += len(sig_hits); evidence.extend(sig_hits)
                     attack_type = sig_hits[0].get("attack", "known_signature")
+                elif n_rules > 0:
+                    # Signature chua match nhung entropy/stats bat thuong
+                    # -> suy doan attack type tu features de log co y nghia hon
+                    if features.get("icmp_pct", 0) > 0.3:
+                        attack_type = "icmp_flood"
+                    elif features.get("syn_pct", 0) > 0.4:
+                        attack_type = "syn_flood"
+                    elif features.get("entropy_src", 5) < 1.0:
+                        attack_type = "single_src_flood"
+                    elif features.get("entropy_src", 0) > 4.0:
+                        attack_type = "spoofed_flood"
                 
                 # --- GUARD: Chi emit alert khi traffic du lon ---
                 total_pkts = features.get("_total_pkts_delta", 0)
