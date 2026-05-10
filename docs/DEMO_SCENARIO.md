@@ -1,6 +1,6 @@
-# DEMO SCENARIO - SDN DDoS Detection & Mitigation
+# KỊCH BẢN DEMO - Hệ thống SDN DDoS Detection & Mitigation
 
-## Khoi dong he thong
+## Khởi động hệ thống
 
 ### Terminal 1: Ryu Controller
 ```bash
@@ -25,200 +25,200 @@ python3 code/detector.py
 cd ~/NT541.Q21-DoS
 python3 code/dashboard.py
 ```
-Truy cap: `http://<VM_IP>:8080`
+Truy cập: `http://<VM_IP>:8080`
 
-### Kiem tra ket noi
+### Kiểm tra kết nối
 ```
 mininet> pingall
 ```
 
 ---
 
-## Kich ban 1: SYN Flood (s01)
+## Kịch bản 1: SYN Flood (s01)
 
-**Dac diem:** TCP SYN, 1 nguon, PPS rat cao (--flood), port 80
+**Đặc điểm:** TCP SYN, 1 nguồn, PPS rất cao (--flood), port 80
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s01_syn.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
 | PPS | >3000 |
-| Attack type | s01_syn_flood |
+| Loại tấn công | s01_syn_flood |
 | Signature | tcp_pct>0.5 AND entropy_src<1.5 AND pps>3000 |
-| Dashboard | Trang thai: TAN CONG, IP 10.0.1.10 bi chan |
+| Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
 **Detector log:**
 ```
-*** TAN CONG: s01_syn_flood | src=10.0.1.10 entropy=0 tcp=1.0
->>> Cap 1/3: GHI NHAN - s01_syn_flood (10.0.1.10)
->>> Cap 2/3: RATE-LIMIT - s01_syn_flood (10.0.1.10)
->>> Cap 3/3: CHAN IP - s01_syn_flood (10.0.1.10)
+*** TẤN CÔNG: s01_syn_flood | src=10.0.1.10 entropy=0 tcp=1.0
+>>> Cấp 1/3: GHI NHẬN - s01_syn_flood (10.0.1.10)
+>>> Cấp 2/3: RATE-LIMIT - s01_syn_flood (10.0.1.10)
+>>> Cấp 3/3: CHẶN IP - s01_syn_flood (10.0.1.10)
 ```
 
 ---
 
-## Kich ban 2: UDP Flood (s02)
+## Kịch bản 2: UDP Flood (s02)
 
-**Dac diem:** UDP, 1 nguon, PPS rat cao, port 53 (DNS)
+**Đặc điểm:** UDP, 1 nguồn, PPS rất cao, port 53 (DNS)
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s02_udp.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
 | PPS | >500 |
-| Attack type | s02_udp_flood |
+| Loại tấn công | s02_udp_flood |
 | Signature | udp_pct>0.5 AND entropy_src<1.5 AND pps>500 |
-| Dashboard | Trang thai: TAN CONG, IP 10.0.1.10 bi chan |
+| Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
 ---
 
-## Kich ban 3: ICMP Flood (s03)
+## Kịch bản 3: ICMP Flood (s03)
 
-**Dac diem:** ICMP (ping), 1 nguon, PPS rat cao
+**Đặc điểm:** ICMP (ping), 1 nguồn, PPS rất cao
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s03_icmp.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
 | PPS | >500 |
-| Attack type | s03_icmp_flood |
+| Loại tấn công | s03_icmp_flood |
 | Signature | icmp_pct>0.5 AND pps>500 |
-| Dashboard | Trang thai: TAN CONG, IP 10.0.1.10 bi chan |
+| Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
 ---
 
-## Kich ban 4: HTTP Flood (s04)
+## Kịch bản 4: HTTP Flood (s04)
 
-**Dac diem:** TCP SYN port 80, 1 nguon, PPS trung binh-cao (2000 pps)
+**Đặc điểm:** TCP SYN port 80, 1 nguồn, PPS trung bình-cao (2000 pps)
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s04_http.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
 | PPS | 300-3000 |
-| Attack type | s04_http_flood |
+| Loại tấn công | s04_http_flood |
 | Signature | tcp_pct>0.8 AND entropy_src<1.5 AND pps>300 AND pps<3000 |
-| Dashboard | Trang thai: TAN CONG, IP 10.0.1.10 bi chan |
+| Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
-**Phan biet voi SYN Flood:** PPS thap hon (300-3000 vs >3000)
+**Phân biệt với SYN Flood:** PPS thấp hơn (300-3000 vs >3000)
 
 ---
 
-## Kich ban 5: DNS Amplification (s05)
+## Kịch bản 5: DNS Amplification (s05)
 
-**Dac diem:** UDP port 53, IP nguon gia (--rand-source), entropy cao
+**Đặc điểm:** UDP port 53, IP nguồn giả (--rand-source), entropy cao
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s05_dns_ampl.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
-| Entropy | ~9-10 (rat nhieu IP nguon gia) |
+| Entropy | ~9-10 (rất nhiều IP nguồn giả) |
 | PPS | >500 |
-| Attack type | s05_dns_ampl |
-| Detection | Controller packet_in detect (UDP + port 53 + rand-source) |
-| Dashboard | Trang thai: SPOOF, MAC bi chan |
+| Loại tấn công | s05_dns_ampl |
+| Phát hiện | Controller packet_in detect (UDP + port 53 + rand-source) |
+| Dashboard | Trạng thái: SPOOF, MAC bị chặn |
 
-**Giai thich:** DNS Amplification su dung IP spoofing (gia mao IP nguon thanh victim). Controller phat hien tu packet_in vi thay nhieu IP la + UDP port 53. Block bang MAC (vi IP gia).
+**Giải thích:** DNS Amplification sử dụng IP spoofing (giả mạo IP nguồn thành victim). Controller phát hiện từ packet_in vì thấy nhiều IP lạ + UDP port 53. Block bằng MAC (vì IP giả).
 
 ---
 
-## Kich ban 6: IP Spoof Flood (s06)
+## Kịch bản 6: IP Spoof Flood (s06)
 
-**Dac diem:** TCP SYN port 80, IP nguon gia (--rand-source), entropy rat cao
+**Đặc điểm:** TCP SYN port 80, IP nguồn giả (--rand-source), entropy rất cao
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s06_ip_spoof.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
-| Entropy | ~9-10 (hang nghin IP nguon gia) |
+| Entropy | ~9-10 (hàng nghìn IP nguồn giả) |
 | PPS | >500 |
-| Attack type | s06_ip_spoof |
-| Detection | Controller packet_in detect (>100 pkts + >20 unique IPs trong 2s) |
-| Dashboard | Trang thai: SPOOF, MAC 00:00:00:00:00:01 bi chan |
+| Loại tấn công | s06_ip_spoof |
+| Phát hiện | Controller packet_in detect (>100 pkts + >20 unique IPs trong 2s) |
+| Dashboard | Trạng thái: SPOOF, MAC 00:00:00:00:00:01 bị chặn |
 
-**Giai thich:** Attacker gia mao IP nguon moi goi. Entropy tang rat cao (~10) nhung MAC khong doi. He thong block theo MAC address (khong doi duoc) thay vi IP (thay doi lien tuc).
+**Giải thích:** Attacker giả mạo IP nguồn mỗi gói. Entropy tăng rất cao (~10) nhưng MAC không đổi. Hệ thống block theo MAC address (không đổi được) thay vì IP (thay đổi liên tục).
 
 ---
 
-## Kich ban 7: Slowloris (s07)
+## Kịch bản 7: Slowloris (s07)
 
-**Dac diem:** TCP SYN port 80, 1 nguon, PPS THAP (~100 pps)
+**Đặc điểm:** TCP SYN port 80, 1 nguồn, PPS THẤP (~100 pps)
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s07_slowloris.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
-| PPS | 30-300 (cham, dac trung Slowloris) |
-| Attack type | s07_slowloris |
+| PPS | 30-300 (chậm, đặc trưng Slowloris) |
+| Loại tấn công | s07_slowloris |
 | Signature | tcp_pct>0.5 AND pps>30 AND pps<300 AND entropy_src<1.5 |
-| Dashboard | Trang thai: TAN CONG, IP 10.0.1.10 bi chan |
+| Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
-**Giai thich:** Slowloris la tan cong cham — gui it goi nhung giu ket noi mo lau de chiem het tai nguyen server. PPS thap hon flood nhung van du de phat hien.
+**Giải thích:** Slowloris là tấn công chậm — gửi ít gói nhưng giữ kết nối mở lâu để chiếm hết tài nguyên server. PPS thấp hơn flood nhưng vẫn đủ để phát hiện.
 
 ---
 
-## Kich ban 8: Flash Crowd (s08) — KHONG BI CHAN
+## Kịch bản 8: Flash Crowd (s08) — KHÔNG BỊ CHẶN
 
-**Dac diem:** Nhieu nguon IP hop phap, PPS thap moi nguon, nhieu port khac nhau
+**Đặc điểm:** Nhiều nguồn IP hợp pháp, PPS thấp mỗi nguồn, nhiều port khác nhau
 
-**Lenh chay:**
+**Lệnh chạy:**
 ```
 mininet> h_att1 bash code/attack_scripts/s08_flash_crowd.sh
 ```
 
-**Ket qua mong doi:**
-| Metric | Gia tri |
+**Kết quả mong đợi:**
+| Metric | Giá trị |
 |--------|---------|
-| Entropy | ~2.5 (6 IP nguon khac nhau) |
-| PPS | ~120 tong (20 pps/nguon) |
-| Attack type | KHONG PHAT HIEN |
-| Dashboard | Trang thai: Binh thuong, KHONG co IP bi chan |
+| Entropy | ~2.5 (6 IP nguồn khác nhau) |
+| PPS | ~120 tổng (20 pps/nguồn) |
+| Loại tấn công | KHÔNG PHÁT HIỆN |
+| Dashboard | Trạng thái: Bình thường, KHÔNG có IP bị chặn |
 
-**Giai thich:** Flash crowd mo phong nhieu nguoi dung hop phap truy cap cung luc. He thong KHONG phat hien la tan cong vi:
-- PPS moi nguon rat thap (<200)
-- Tat ca IP nguon deu nam trong whitelist
-- Entropy vua phai (khong qua thap cung khong qua cao)
-- Khong match bat ky signature tan cong nao
+**Giải thích:** Flash crowd mô phỏng nhiều người dùng hợp pháp truy cập cùng lúc. Hệ thống KHÔNG phát hiện là tấn công vì:
+- PPS mỗi nguồn rất thấp (<200)
+- Tất cả IP nguồn đều nằm trong whitelist
+- Entropy vừa phải (không quá thấp cũng không quá cao)
+- Không match bất kỳ signature tấn công nào
 
 ---
 
-## Bang tom tat
+## Bảng tóm tắt
 
-| Kich ban | Entropy | PPS | Protocol | Detection | Block |
-|----------|---------|-----|----------|-----------|-------|
+| Kịch bản | Entropy | PPS | Protocol | Phát hiện | Chặn |
+|----------|---------|-----|----------|-----------|------|
 | s01 SYN Flood | ~0 | >3000 | TCP | Signature + Stat | IP |
 | s02 UDP Flood | ~0 | >500 | UDP | Signature + Stat | IP |
 | s03 ICMP Flood | ~0 | >500 | ICMP | Signature + Stat | IP |
@@ -226,11 +226,11 @@ mininet> h_att1 bash code/attack_scripts/s08_flash_crowd.sh
 | s05 DNS Ampl | ~9-10 | >500 | UDP:53 | Packet_in (spoof) | MAC |
 | s06 IP Spoof | ~9-10 | >500 | TCP | Packet_in (spoof) | MAC |
 | s07 Slowloris | ~0 | 30-300 | TCP | Signature + Stat | IP |
-| s08 Flash Crowd | ~2.5 | ~120 | TCP | **Khong phat hien** | **Khong** |
+| s08 Flash Crowd | ~2.5 | ~120 | TCP | **Không phát hiện** | **Không** |
 
-## Luu y quan trong
+## Lưu ý quan trọng
 
-1. **Doi 30 giay** giua cac kich ban de he thong tu dong go chan
-2. Kiem tra trang thai chan: `sudo ovs-ofctl -O OpenFlow13 dump-flows s2 | grep "priority=100"`
-3. Go chan thu cong: Vao trang Alerts > nhap IP > bam "Go chan"
-4. Dashboard tu dong cap nhat moi 2 giay
+1. **Đợi 30 giây** giữa các kịch bản để hệ thống tự động gỡ chặn
+2. Kiểm tra trạng thái chặn: `sudo ovs-ofctl -O OpenFlow13 dump-flows s2 | grep "priority=100"`
+3. Gỡ chặn thủ công: Vào trang Alerts > nhập IP > bấm "Gỡ chặn"
+4. Dashboard tự động cập nhật mỗi 2 giây
