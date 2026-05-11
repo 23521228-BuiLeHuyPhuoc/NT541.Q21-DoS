@@ -255,8 +255,6 @@ def main():
                         attack_type = "icmp_flood"
                     elif features.get("udp_pct", 0) > 0.3:
                         attack_type = "udp_flood"
-                    elif features.get("syn_pct", 0) > 0.5 and pps_val > 500:
-                        attack_type = "s01_syn_flood"
                     elif features.get("tcp_pct", 0) > 0.3 and pps_val > 500:
                         attack_type = "tcp_flood"
                     elif entropy_val < 1.0 and pps_val > 500:
