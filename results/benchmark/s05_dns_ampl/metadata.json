@@ -3,7 +3,7 @@
     "name": "DNS Amplification",
     "script": "s05_dns_ampl.sh",
     "attack_duration": 20,
-    "attack_start": 1778472002,
-    "attack_end": 1778472032,
-    "timestamp": "2026-05-10 21:00:49"
+    "attack_start": 1778478405,
+    "attack_end": 1778478441,
+    "timestamp": "2026-05-10 22:47:38"
 }

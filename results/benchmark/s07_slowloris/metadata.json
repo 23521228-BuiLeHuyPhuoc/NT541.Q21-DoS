@@ -3,7 +3,7 @@
     "name": "Slowloris",
     "script": "s07_slowloris.sh",
     "attack_duration": 20,
-    "attack_start": 1778472215,
-    "attack_end": 1778472256,
-    "timestamp": "2026-05-10 21:04:35"
+    "attack_start": 1778478640,
+    "attack_end": 1778478688,
+    "timestamp": "2026-05-10 22:51:52"
 }
