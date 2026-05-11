@@ -335,12 +335,12 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 elif p_tcp:
                     self._dst_port_window.append(p_tcp.dst_port)
                     if (p_tcp.bits & 0x02) and not (p_tcp.bits & 0x10):
+                        self.proto_window.append('tcp_syn')
+                    else:
                         if p_tcp.dst_port == 80 or p_tcp.dst_port == 443:
                             self.proto_window.append('tcp_http')
                         else:
-                            self.proto_window.append('tcp_syn')
-                    else:
-                        self.proto_window.append('tcp')
+                            self.proto_window.append('tcp')
                 elif p_udp:
                     self._dst_port_window.append(p_udp.dst_port)
                     if p_udp.dst_port == 53:
