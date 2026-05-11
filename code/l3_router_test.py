@@ -368,7 +368,20 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
             # Them ip_proto vao match de detector.py doc duoc icmp_pct/syn_pct/udp_pct
             # TAT CA flows deu permanent (idle_timeout=0) de pingall luon nhanh sau attack
             proto_num = p_ip.proto  # 1=ICMP, 6=TCP, 17=UDP
-            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
+            if proto_num == 6:
+                p_tcp = pkt.get_protocol(tcp.tcp)
+                if p_tcp:
+                    match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num, tcp_dst=p_tcp.dst_port)
+                else:
+                    match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
+            elif proto_num == 17:
+                p_udp = pkt.get_protocol(udp.udp)
+                if p_udp:
+                    match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num, udp_dst=p_udp.dst_port)
+                else:
+                    match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
+            else:
+                match = parser.OFPMatch(eth_type=0x0800, ipv4_src=p_ip.src, ipv4_dst=p_ip.dst, ip_proto=proto_num)
             self.add_flow(dp, 5, match, actions, idle_timeout=0)
 
             dp.send_msg(parser.OFPPacketOut(
