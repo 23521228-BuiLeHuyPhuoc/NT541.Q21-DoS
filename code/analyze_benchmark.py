@@ -7,6 +7,7 @@ Cach dung:
     python3 code/analyze_benchmark.py
 """
 import os, json, sys
+os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
 from collections import defaultdict
 from datetime import datetime
 import numpy as np
@@ -227,7 +228,7 @@ def generate_report(results):
     lines.append("|----------|-------------|---------|----------|-----------|---------------|---------|---------|-----------------|")
     
     for r in results:
-        detected = "✅" if r["detection"]["detected"] else "❌"
+        detected = "[OK]" if r["detection"]["detected"] else "[X]"
         attack_types = ", ".join(r["detection"]["attack_types"]) if r["detection"]["attack_types"] else "—"
         blocked_ips = ", ".join(r["mitigation"]["blocked_ips"]) if r["mitigation"]["blocked_ips"] else "—"
         blocked_macs = ", ".join(r["mitigation"]["blocked_macs"]) if r["mitigation"]["blocked_macs"] else "—"
@@ -332,7 +333,7 @@ def generate_report(results):
         lines.append(f"### {r['name']} (`{r['id']}`)\n")
         
         expected = r["expected"]
-        match_icon = "✅" if r["match"]["detected_correct"] else "❌"
+        match_icon = "[OK]" if r["match"]["detected_correct"] else "[X]"
         
         lines.append(f"- **Kết quả phát hiện:** {match_icon} {'Phát hiện' if r['detection']['detected'] else 'Không phát hiện'} (mong đợi: {'Phát hiện' if expected.get('attack') else 'Không phát hiện'})")
         lines.append(f"- **Loại tấn công phát hiện:** {', '.join(r['detection']['attack_types']) or 'Không'}")
@@ -358,9 +359,9 @@ def generate_report(results):
     lines.append(f"- **True Negative:** {tn}/{tn+fp} kịch bản bình thường không bị báo nhầm.")
     
     if fp > 0:
-        lines.append(f"- ⚠️ **False Positive:** {fp} trường hợp traffic bình thường bị nhận nhầm là tấn công.")
+        lines.append(f"- [!] **False Positive:** {fp} truong hop traffic binh thuong bi nhan nham la tan cong.")
     if fn > 0:
-        lines.append(f"- ⚠️ **False Negative:** {fn} trường hợp tấn công không được phát hiện.")
+        lines.append(f"- [!] **False Negative:** {fn} truong hop tan cong khong duoc phat hien.")
     
     lines.append(f"- Hệ thống sử dụng **3 cấp mitigation** (Log → Rate-Limit → Block) cho phản ứng linh hoạt.")
     lines.append(f"- Tấn công IP Spoofing/DNS Amplification được xử lý bằng **chặn MAC** (thay vì IP giả mạo).")
@@ -392,7 +393,7 @@ def main():
         results.append(r)
         
         # In tom tat nhanh
-        detected = "✅ Phat hien" if r["detection"]["detected"] else "❌ Khong phat hien"
+        detected = "[OK] Phat hien" if r["detection"]["detected"] else "[X] Khong phat hien"
         print(f"    {detected} | Entropy={r['entropy']['attack_avg']} | PPS={r['pps']['attack_avg']}")
     
     # Tao bao cao
@@ -418,8 +419,8 @@ def main():
     print(f"{'Kich ban':<20} {'Entropy':>8} {'PPS':>8} {'Phat hien':>12} {'Loai':>20}")
     print("-" * 80)
     for r in results:
-        detected = "✅" if r["detection"]["detected"] else "❌"
-        types = ", ".join(r["detection"]["attack_types"])[:20] or "—"
+        detected = "[OK]" if r["detection"]["detected"] else "[X]"
+        types = ", ".join(r["detection"]["attack_types"])[:20] or "--"
         print(f"{r['name']:<20} {r['entropy']['attack_avg']:>8} {r['pps']['attack_avg']:>8} {detected:>12} {types:>20}")
     
     # In do chinh xac
@@ -744,9 +745,9 @@ def chart_6_timeline(results, short_names):
             ax.axvspan(attack_end, len(timestamps), alpha=0.1, color='green', label='Phuc hoi')
         
         # Detected?
-        detected_icon = '✅' if r['detection']['detected'] else '❌'
+        detected_txt = '[OK]' if r['detection']['detected'] else '[X]'
         title_color = '#e94560' if r['detection']['detected'] else '#53d769'
-        ax.set_title(f"{r['id']} — {r['name']} {detected_icon}", fontsize=11, color=title_color, fontweight='bold')
+        ax.set_title(f"{r['id']} - {r['name']} {detected_txt}", fontsize=11, color=title_color, fontweight='bold')
         ax.grid(alpha=0.3)
     
     plt.xlabel('Thoi gian (giay)')
