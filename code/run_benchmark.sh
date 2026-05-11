@@ -192,6 +192,25 @@ if ! curl -s "$RYU_ENTROPY_URL" > /dev/null 2>&1; then
 fi
 echo "[OK] Ryu controller san sang."
 
+# Warm up ARP table (tuong tu pingall) de flow rules duoc cai dat tren s2
+echo "[BENCHMARK] Warming up ARP table (ping giua cac host)..."
+HOSTS=("h_att1" "h_att2" "h_sv1" "h_sv2" "h_pc1" "h_pc2" "h_pc3" "h_pc4" "h_pc5" "h_pc6" "h_admin")
+TARGETS=("10.0.2.10" "10.0.2.11" "10.0.1.10" "10.0.1.20" "10.0.3.10" "10.0.3.11" "10.0.4.10" "10.0.4.11" "10.0.4.12" "10.0.4.13")
+
+# Ping tu h_att1 toi tat ca host khac
+for target in "${TARGETS[@]}"; do
+    run_on_host h_att1 ping -c 1 -W 1 "$target" > /dev/null 2>&1 &
+done
+wait
+
+# Ping tu h_sv1 toi h_att1
+run_on_host h_sv1 ping -c 1 -W 1 10.0.1.10 > /dev/null 2>&1
+# Ping tu h_sv2 toi h_att1
+run_on_host h_sv2 ping -c 1 -W 1 10.0.1.10 > /dev/null 2>&1
+
+echo "[OK] ARP table da duoc khoi tao. Flow rules da cai dat tren s2."
+sleep 3  # Cho detector ghi nhan baseline
+
 TOTAL_START=$(date +%s)
 SCENARIO_NUM=0
 TOTAL=${#SCENARIOS[@]}
