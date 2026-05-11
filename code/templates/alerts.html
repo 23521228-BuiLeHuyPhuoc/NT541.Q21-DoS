@@ -41,6 +41,18 @@
             <button class="btn-unblock" onclick="manualUnblock()">Go chan</button>
             <span id="unblockResult" class="result" style="color:green;"></span>
         </div>
+        <div class="action-box">
+            <b>Chan MAC:</b>
+            <input type="text" id="blockMacInput" placeholder="VD: 00:00:00:00:01:0a">
+            <button class="btn-block" onclick="manualBlockMac()">Chan</button>
+            <span id="blockMacResult" class="result" style="color:red;"></span>
+        </div>
+        <div class="action-box">
+            <b>Go chan MAC:</b>
+            <input type="text" id="unblockMacInput" placeholder="VD: 00:00:00:00:01:0a">
+            <button class="btn-unblock" onclick="manualUnblockMac()">Go chan</button>
+            <span id="unblockMacResult" class="result" style="color:green;"></span>
+        </div>
     </div>
 
     <table>
@@ -80,6 +92,30 @@
                 body: JSON.stringify({src_ip: ip})
             }).then(r=>r.json()).then(d=>{
                 document.getElementById('unblockResult').innerText = d.ok ? "Da go chan " + ip : "Loi: " + d.error;
+            }).catch(()=>alert("Loi ket noi!"));
+        }
+
+        function manualBlockMac() {
+            const mac = document.getElementById('blockMacInput').value;
+            if(!mac) return alert("Nhap MAC!");
+            fetch('/api/block_mac', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mac: mac})
+            }).then(r=>r.json()).then(d=>{
+                document.getElementById('blockMacResult').innerText = d.ok ? "Da chan " + mac : "Loi: " + d.error;
+            }).catch(()=>alert("Loi ket noi!"));
+        }
+
+        function manualUnblockMac() {
+            const mac = document.getElementById('unblockMacInput').value;
+            if(!mac) return alert("Nhap MAC!");
+            fetch('/api/unblock_mac', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mac: mac})
+            }).then(r=>r.json()).then(d=>{
+                document.getElementById('unblockMacResult').innerText = d.ok ? "Da go chan " + mac : "Loi: " + d.error;
             }).catch(()=>alert("Loi ket noi!"));
         }
     </script>

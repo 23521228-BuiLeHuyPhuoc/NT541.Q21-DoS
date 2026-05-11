@@ -188,7 +188,70 @@ class AlertAPI(ControllerBase):
         if not self.router.blocked_ips and not self.router.blocked_macs:
             self.router.attack_status = 0
 
+        # Neu IP nay cung bi block theo MAC -> go luon MAC
+        mac = self.router.arp_table.get(src)
+        if mac and mac in self.router.blocked_macs:
+            self.router.blocked_macs.discard(mac)
+            match_mac = parser.OFPMatch(eth_src=mac)
+            mod_mac = parser.OFPFlowMod(datapath=dp, command=dp.ofproto.OFPFC_DELETE,
+                                         out_port=dp.ofproto.OFPP_ANY, out_group=dp.ofproto.OFPG_ANY,
+                                         match=match_mac)
+            dp.send_msg(mod_mac)
+            self.router.logger.info(f"[UNBLOCK] Da go chan MAC {mac} (lien ket IP {src})")
+
         self.router.logger.info(f"[UNBLOCK] Da go chan IP {src}")
+        return Response(content_type='application/json', body=b'{"ok":true}')
+
+    @route('block_mac', '/api/block_mac', methods=['POST'])
+    def receive_block_mac(self, req, **kw):
+        payload = json.loads(req.body)
+        mac = payload.get('mac', '')
+        if not mac:
+            return Response(content_type='application/json', body=b'{"ok":false,"error":"Thieu MAC"}')
+
+        dp = self.router.dps.get(2)
+        if not dp:
+            return Response(content_type='application/json', body=b'{"ok":false,"error":"Switch s2 chua ket noi"}')
+
+        # Cai flow drop theo MAC
+        self.router._block_mac(dp, mac, timeout=60)
+        self.router.blocked_macs.add(mac)
+        self.router.logger.info(f"[BLOCK-MAC] Da chan MAC {mac} (thu cong, 60s)")
+
+        # Tu dong go chan sau 60s
+        from ryu.lib import hub
+        def _auto_unblock_mac():
+            hub.sleep(60)
+            self.router.blocked_macs.discard(mac)
+            if not self.router.blocked_ips and not self.router.blocked_macs:
+                self.router.attack_status = 0
+            self.router.logger.info(f"[BLOCK-MAC] Da go chan MAC {mac} sau 60s")
+        hub.spawn(_auto_unblock_mac)
+
+        return Response(content_type='application/json', body=b'{"ok":true}')
+
+    @route('unblock_mac', '/api/unblock_mac', methods=['POST'])
+    def receive_unblock_mac(self, req, **kw):
+        payload = json.loads(req.body)
+        mac = payload.get('mac', '')
+        if not mac:
+            return Response(content_type='application/json', body=b'{"ok":false,"error":"Thieu MAC"}')
+
+        self.router.blocked_macs.discard(mac)
+
+        dp = self.router.dps.get(2)
+        if dp:
+            parser = dp.ofproto_parser
+            match = parser.OFPMatch(eth_src=mac)
+            mod = parser.OFPFlowMod(datapath=dp, command=dp.ofproto.OFPFC_DELETE,
+                                     out_port=dp.ofproto.OFPP_ANY, out_group=dp.ofproto.OFPG_ANY,
+                                     match=match)
+            dp.send_msg(mod)
+
+        if not self.router.blocked_ips and not self.router.blocked_macs:
+            self.router.attack_status = 0
+
+        self.router.logger.info(f"[UNBLOCK-MAC] Da go chan MAC {mac}")
         return Response(content_type='application/json', body=b'{"ok":true}')
 
     @route('entropy', '/api/entropy', methods=['GET'])

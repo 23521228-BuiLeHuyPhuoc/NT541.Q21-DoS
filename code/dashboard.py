@@ -165,7 +165,39 @@ def manual_unblock():
         return jsonify({"ok": False, "error": str(e)})
 
 # ==========================================
-# 5. DEBUG - XEM RAW DATA TU RYU
+# 6. ENDPOINT MANUAL BLOCK MAC (Chan MAC thu cong)
+# ==========================================
+@app.route('/api/block_mac', methods=['POST'])
+def manual_block_mac():
+    try:
+        mac = request.json['mac']
+        if not mac:
+            return jsonify({"ok": False, "error": "Thieu thong tin MAC"})
+
+        requests.post('http://127.0.0.1:8081/api/block_mac',
+                      json={"mac": mac}, timeout=2)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+# ==========================================
+# 7. ENDPOINT MANUAL UNBLOCK MAC (Go chan MAC thu cong)
+# ==========================================
+@app.route('/api/unblock_mac', methods=['POST'])
+def manual_unblock_mac():
+    try:
+        mac = request.json['mac']
+        if not mac:
+            return jsonify({"ok": False, "error": "Thieu thong tin MAC"})
+
+        requests.post('http://127.0.0.1:8081/api/unblock_mac',
+                      json={"mac": mac}, timeout=2)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+# ==========================================
+# 8. DEBUG - XEM RAW DATA TU RYU
 # ==========================================
 @app.route('/api/debug')
 def debug_ryu():
