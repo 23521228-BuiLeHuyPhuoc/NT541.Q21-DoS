@@ -3,8 +3,9 @@
 # run_benchmark.sh — Chay toan bo 8 kich ban tan cong va thu thap
 # ket qua de phan tich cho bao cao.
 #
-# CACH DUNG (trong Mininet CLI):
-#   mininet> h_att1 bash code/run_benchmark.sh
+# CACH DUNG (tu VM terminal, KHONG phai tu Mininet CLI):
+#   cd ~/NT541.Q21-DoS
+#   sudo bash code/run_benchmark.sh
 #
 # YEU CAU: Ryu + Mininet + detector.py phai dang chay
 # =============================================================
@@ -108,7 +109,8 @@ run_scenario() {
     echo "[BENCHMARK] Bat dau tan cong: $script ($ATTACK_DURATION giay)..."
     local attack_start=$(date +%s)
     
-    bash "$ATTACK_DIR/$script" &
+    # Chay tan cong tren h_att1 qua Mininet utility 'm'
+    m h_att1 bash "$ATTACK_DIR/$script" &
     ATTACK_PID=$!
     
     # Thu thap metric moi giay trong khi tan cong
