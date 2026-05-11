@@ -1,0 +1,503 @@
+[
+  {
+    "id": "s01_syn",
+    "name": "SYN Flood",
+    "timestamp": "2026-05-10 20:55:23",
+    "total_metrics": 35,
+    "total_alerts": 3,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 0.195,
+      "attack_min": -0.0,
+      "attack_max": 1.3,
+      "post_avg": 0.91
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 23122.4,
+      "attack_max": 104580.3
+    },
+    "protocol": {
+      "tcp_avg": 0.116,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [
+        "10.0.1.10"
+      ],
+      "blocked_macs": [],
+      "total_blocked_ips": 1,
+      "total_blocked_macs": 0
+    },
+    "detection": {
+      "detected": true,
+      "attack_types": [
+        "s01_syn_flood"
+      ],
+      "actions": [
+        "Blocked",
+        "Rate-Limited",
+        "Logged"
+      ],
+      "alert_count": 3
+    },
+    "unique_ips": {
+      "avg": 0.8,
+      "max": 1
+    },
+    "flows": {
+      "avg": 3.9,
+      "max": 5
+    },
+    "detection_time_sec": 5.9,
+    "expected": {
+      "attack": true,
+      "type": "s01_syn_flood",
+      "block": "IP",
+      "entropy": "low",
+      "pps": "high"
+    },
+    "match": {
+      "detected_correct": true
+    }
+  },
+  {
+    "id": "s02_udp",
+    "name": "UDP Flood",
+    "timestamp": "2026-05-10 20:56:41",
+    "total_metrics": 35,
+    "total_alerts": 3,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 0.065,
+      "attack_min": -0.0,
+      "attack_max": 1.3,
+      "post_avg": 0.91
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 25822.2,
+      "attack_max": 30622.3
+    },
+    "protocol": {
+      "tcp_avg": 0.0,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [
+        "10.0.1.10"
+      ],
+      "blocked_macs": [],
+      "total_blocked_ips": 1,
+      "total_blocked_macs": 0
+    },
+    "detection": {
+      "detected": true,
+      "attack_types": [
+        "single_src_flood"
+      ],
+      "actions": [
+        "Blocked",
+        "Rate-Limited",
+        "Logged"
+      ],
+      "alert_count": 3
+    },
+    "unique_ips": {
+      "avg": 0.9,
+      "max": 1
+    },
+    "flows": {
+      "avg": 4.8,
+      "max": 5
+    },
+    "detection_time_sec": 1.0,
+    "expected": {
+      "attack": true,
+      "type": "s02_udp_flood",
+      "block": "IP",
+      "entropy": "low",
+      "pps": "high"
+    },
+    "match": {
+      "detected_correct": true
+    }
+  },
+  {
+    "id": "s03_icmp",
+    "name": "ICMP Flood",
+    "timestamp": "2026-05-10 20:57:59",
+    "total_metrics": 35,
+    "total_alerts": 3,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 0.065,
+      "attack_min": -0.0,
+      "attack_max": 1.3,
+      "post_avg": 1.04
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 25329.3,
+      "attack_max": 44311.7
+    },
+    "protocol": {
+      "tcp_avg": 0.0,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [
+        "10.0.1.10"
+      ],
+      "blocked_macs": [],
+      "total_blocked_ips": 1,
+      "total_blocked_macs": 0
+    },
+    "detection": {
+      "detected": true,
+      "attack_types": [
+        "single_src_flood"
+      ],
+      "actions": [
+        "Blocked",
+        "Rate-Limited",
+        "Logged"
+      ],
+      "alert_count": 3
+    },
+    "unique_ips": {
+      "avg": 0.9,
+      "max": 1
+    },
+    "flows": {
+      "avg": 4.9,
+      "max": 5
+    },
+    "detection_time_sec": 1.0,
+    "expected": {
+      "attack": true,
+      "type": "s03_icmp_flood",
+      "block": "IP",
+      "entropy": "low",
+      "pps": "high"
+    },
+    "match": {
+      "detected_correct": true
+    }
+  },
+  {
+    "id": "s04_http",
+    "name": "HTTP Flood",
+    "timestamp": "2026-05-10 20:59:16",
+    "total_metrics": 35,
+    "total_alerts": 0,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 0.065,
+      "attack_min": -0.0,
+      "attack_max": 1.3,
+      "post_avg": 1.17
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 104.8,
+      "attack_max": 171.1
+    },
+    "protocol": {
+      "tcp_avg": 0.0,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [],
+      "blocked_macs": [],
+      "total_blocked_ips": 0,
+      "total_blocked_macs": 0
+    },
+    "detection": {
+      "detected": false,
+      "attack_types": [],
+      "actions": [],
+      "alert_count": 0
+    },
+    "unique_ips": {
+      "avg": 0.9,
+      "max": 1
+    },
+    "flows": {
+      "avg": 4.0,
+      "max": 4
+    },
+    "detection_time_sec": null,
+    "expected": {
+      "attack": true,
+      "type": "s04_http_flood",
+      "block": "IP",
+      "entropy": "low",
+      "pps": "medium"
+    },
+    "match": {
+      "detected_correct": false
+    }
+  },
+  {
+    "id": "s05_dns_ampl",
+    "name": "DNS Amplification",
+    "timestamp": "2026-05-10 21:00:49",
+    "total_metrics": 35,
+    "total_alerts": 3,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 1.4032,
+      "attack_min": 1.0,
+      "attack_max": 3.6645,
+      "post_avg": 1.3
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 115.0,
+      "attack_max": 636.2
+    },
+    "protocol": {
+      "tcp_avg": 0.0,
+      "udp_avg": 0.1,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [
+        "10.0.1.10"
+      ],
+      "blocked_macs": [
+        "00:00:00:00:00:01"
+      ],
+      "total_blocked_ips": 1,
+      "total_blocked_macs": 1
+    },
+    "detection": {
+      "detected": true,
+      "attack_types": [
+        "s05_dns_ampl"
+      ],
+      "actions": [
+        "Blocked",
+        "Rate-Limited",
+        "Logged"
+      ],
+      "alert_count": 3
+    },
+    "unique_ips": {
+      "avg": 0.8,
+      "max": 13
+    },
+    "flows": {
+      "avg": 1027.1,
+      "max": 1100
+    },
+    "detection_time_sec": 2.5,
+    "expected": {
+      "attack": true,
+      "type": "s05_dns_ampl",
+      "block": "MAC",
+      "entropy": "high",
+      "pps": "medium"
+    },
+    "match": {
+      "detected_correct": true
+    }
+  },
+  {
+    "id": "s06_ip_spoof",
+    "name": "IP Spoof Flood",
+    "timestamp": "2026-05-10 21:02:44",
+    "total_metrics": 35,
+    "total_alerts": 6,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 2.1722,
+      "attack_min": 1.3,
+      "attack_max": 9.0,
+      "post_avg": 1.3
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 1124.6,
+      "attack_max": 9999.0
+    },
+    "protocol": {
+      "tcp_avg": 0.2,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.1
+    },
+    "mitigation": {
+      "blocked_ips": [
+        "10.0.1.10"
+      ],
+      "blocked_macs": [
+        "00:00:00:00:00:01"
+      ],
+      "total_blocked_ips": 1,
+      "total_blocked_macs": 1
+    },
+    "detection": {
+      "detected": true,
+      "attack_types": [
+        "spoofed_flood",
+        "s06_ip_spoof"
+      ],
+      "actions": [
+        "Blocked",
+        "Rate-Limited",
+        "Logged"
+      ],
+      "alert_count": 6
+    },
+    "unique_ips": {
+      "avg": 1000.4,
+      "max": 9999
+    },
+    "flows": {
+      "avg": 1957.2,
+      "max": 2024
+    },
+    "detection_time_sec": 3.8,
+    "expected": {
+      "attack": true,
+      "type": "s06_spoof",
+      "block": "MAC",
+      "entropy": "high",
+      "pps": "medium"
+    },
+    "match": {
+      "detected_correct": true
+    }
+  },
+  {
+    "id": "s07_slowloris",
+    "name": "Slowloris",
+    "timestamp": "2026-05-10 21:04:35",
+    "total_metrics": 35,
+    "total_alerts": 0,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 0.585,
+      "attack_min": -0.0,
+      "attack_max": 1.3,
+      "post_avg": 1.3
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 37.2,
+      "attack_max": 94.5
+    },
+    "protocol": {
+      "tcp_avg": 0.0,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [],
+      "blocked_macs": [],
+      "total_blocked_ips": 0,
+      "total_blocked_macs": 0
+    },
+    "detection": {
+      "detected": false,
+      "attack_types": [],
+      "actions": [],
+      "alert_count": 0
+    },
+    "unique_ips": {
+      "avg": 0.6,
+      "max": 1
+    },
+    "flows": {
+      "avg": 2022.7,
+      "max": 2023
+    },
+    "detection_time_sec": null,
+    "expected": {
+      "attack": true,
+      "type": "s07_slowloris",
+      "block": "IP",
+      "entropy": "low",
+      "pps": "low"
+    },
+    "match": {
+      "detected_correct": false
+    }
+  },
+  {
+    "id": "s08_flash_crowd",
+    "name": "Flash Crowd",
+    "timestamp": "2026-05-10 21:06:26",
+    "total_metrics": 35,
+    "total_alerts": 3,
+    "entropy": {
+      "baseline_avg": 1.3,
+      "attack_avg": 0.6513,
+      "attack_min": -0.0,
+      "attack_max": 1.3,
+      "post_avg": 1.3
+    },
+    "pps": {
+      "baseline_avg": 0.0,
+      "attack_avg": 59.2,
+      "attack_max": 166.0
+    },
+    "protocol": {
+      "tcp_avg": 0.172,
+      "udp_avg": 0.0,
+      "icmp_avg": 0.0,
+      "syn_avg": 0.0
+    },
+    "mitigation": {
+      "blocked_ips": [
+        "10.0.1.10"
+      ],
+      "blocked_macs": [],
+      "total_blocked_ips": 1,
+      "total_blocked_macs": 0
+    },
+    "detection": {
+      "detected": true,
+      "attack_types": [
+        "s07_slowloris"
+      ],
+      "actions": [
+        "Blocked",
+        "Rate-Limited",
+        "Logged"
+      ],
+      "alert_count": 3
+    },
+    "unique_ips": {
+      "avg": 0.8,
+      "max": 2
+    },
+    "flows": {
+      "avg": 2023.4,
+      "max": 2024
+    },
+    "detection_time_sec": 2.6,
+    "expected": {
+      "attack": false,
+      "type": "none",
+      "block": "none",
+      "entropy": "medium",
+      "pps": "low"
+    },
+    "match": {
+      "detected_correct": false
+    }
+  }
+]

@@ -3,7 +3,7 @@
     "name": "SYN Flood",
     "script": "s01_syn.sh",
     "attack_duration": 20,
-    "attack_start": 1778467740,
-    "attack_end": 1778467774,
-    "timestamp": "2026-05-10 19:49:45"
+    "attack_start": 1778471686,
+    "attack_end": 1778471712,
+    "timestamp": "2026-05-10 20:55:23"
 }
