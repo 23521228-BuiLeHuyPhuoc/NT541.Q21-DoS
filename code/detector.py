@@ -26,6 +26,7 @@ _current_attack = None     # Theo doi attack dang detect de khong in lap
 _attack_count = 0          # So lan emit trong 1 dot tan cong
 _consecutive_timeouts = 0  # Dem so lan timeout lien tiep
 _timeout_alert_sent = False # Da gui alert do timeout chua
+_post_spoof_cooldown = 0   # Cooldown sau spoof de khong re-detect
 
 # Them bien Global nay o dau file detector.py (duoi dong first_run = True)
 last_flow_counts = {}
@@ -172,8 +173,15 @@ def main():
         while True:
             try:
                 global cycle_count, _current_attack, _attack_count, _warmup_logged, _skip_logged
-                global _consecutive_timeouts, _timeout_alert_sent
+                global _consecutive_timeouts, _timeout_alert_sent, _post_spoof_cooldown
                 cycle_count += 1
+                
+                # Cooldown sau spoof: bo qua detection trong vai giay
+                if _post_spoof_cooldown > 0:
+                    _post_spoof_cooldown -= 1
+                    resp = requests.get(RYU_FLOW_URL, timeout=2)
+                    time.sleep(1)
+                    continue
                 
                 resp = requests.get(RYU_FLOW_URL, timeout=2)
                 
@@ -279,7 +287,7 @@ def main():
                 else:
                     if _current_attack is not None:
                         _attack_count += 1
-                        if _attack_count > 10:
+                        if _attack_count > 5:
                             print(f"[{time.strftime('%H:%M:%S')}] --- Ket thuc: {_current_attack}")
                             _current_attack = None
                             _attack_count = 0
@@ -332,6 +340,12 @@ def main():
                     if _timeout_alert_sent:
                         print(f"[{time.strftime('%H:%M:%S')}] Controller da phuc hoi sau {_consecutive_timeouts} timeouts")
                         _timeout_alert_sent = False
+                        # Reset trang thai tan cong spoof
+                        _current_attack = None
+                        _attack_count = 0
+                        first_run = True  # Reset baseline PPS
+                        _post_spoof_cooldown = 10  # Bo qua 10 giay de flow table on dinh
+                        print(f"[{time.strftime('%H:%M:%S')}] Reset trang thai. Cooldown 10s...")
                     _consecutive_timeouts = 0
             time.sleep(1)
     except Exception as e: print(f"Error: {e}")
