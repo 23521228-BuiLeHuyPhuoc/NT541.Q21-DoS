@@ -2,7 +2,7 @@ name,desc,rule,thresholds,features,papers
 s01_syn_flood,SYN Flood,"tcp_pct>0.5 AND entropy_src<1.5 AND pps>3000","0.5;1.5;3000","tcp_pct;entropy_src;pps","A1;B1"
 s02_udp_flood,UDP Flood,"udp_pct>0.5 AND entropy_src<1.5 AND pps>500","0.5;1.5;500","udp_pct;entropy_src;pps","A2;B2"
 s03_icmp_flood,ICMP Flood,"icmp_pct>0.5 AND entropy_src<2.0 AND pps>500","0.5;2.0;500","icmp_pct;entropy_src;pps","A3"
-s04_http_flood,HTTP Flood,"tcp_pct>0.8 AND entropy_src<1.5 AND pps>300 AND pps<3000","0.8;1.5;300;3000","tcp_pct;entropy_src;pps","B4"
+s04_http_flood,HTTP Flood,"tcp_pct>0.8 AND entropy_src<1.5 AND pps>100 AND pps<3000","0.8;1.5;100;3000","tcp_pct;entropy_src;pps","B4"
 s05_dns_ampl,DNS Amplification,"udp_pct>0.5 AND entropy_src>3 AND pps>100","0.5;3;100","udp_pct;entropy_src;pps","C2"
 s06_spoof,IP Spoof,"entropy_src>3.5 AND pps>500","3.5;500","entropy_src;pps","B3"
 s07_slowloris,Slowloris,"tcp_pct>0.5 AND pps>30 AND pps<300 AND entropy_src<1.5","0.5;30;300;1.5","tcp_pct;pps;entropy_src","B5"

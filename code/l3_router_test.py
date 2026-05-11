@@ -302,7 +302,9 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     self._pktin_dport_counter[p_udp_spoof.dst_port] += 1
 
                 if now_pkt - self._pktin_window_start >= self._SPOOF_WINDOW:
-                    self._check_spoof_flood(dp, p_ip.dst)
+                    # Neu window qua cu (vd nghi > 3s), khong phan tich ma chi reset
+                    if now_pkt - self._pktin_window_start <= self._SPOOF_WINDOW + 1.0:
+                        self._check_spoof_flood(dp, p_ip.dst)
                     # Reset window
                     self._pktin_window_start = now_pkt
                     self._pktin_count = 0
