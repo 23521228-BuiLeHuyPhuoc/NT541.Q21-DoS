@@ -33,6 +33,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
         self.src_ip_window = []            # DANH SACH IP NGUON GAN DAY
         self.src_mac_window = []           # DANH SACH MAC TUONG UNG
         self.proto_window = []             # DANH SACH PROTOCOL (tcp_syn, udp, icmp...)
+        self._dst_port_window = []         # DANH SACH DST PORT GAN DAY
         self.blocked_ips = set()           # TAP IP DA BI CHAN
         self.blocked_macs = set()          # TAP MAC DA BI CHAN
         self.packet_rate = 0               # DEM SO GOI TRONG MOI CHU KY
@@ -113,10 +114,16 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     p = count / total
                     entropy -= p * math.log2(p)
                 self.last_entropy = entropy
+                # Dem so unique dst_port de phat hien flash crowd
+                unique_ports = len(set(self._dst_port_window)) if self._dst_port_window else 0
                 # Chi cap nhat trang thai cho dashboard, KHONG block
                 if window_size >= 100 and current_rate >= 50:
                     if entropy < self.ENTROPY_LOW:
-                        self.attack_status = 1
+                        # Flash crowd: entropy thap nhung nhieu port khac nhau
+                        if unique_ports > 3:
+                            self.attack_status = 0
+                        else:
+                            self.attack_status = 1
                     elif entropy > self.ENTROPY_HIGH:
                         self.attack_status = 2
                     else:
@@ -126,6 +133,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 self.src_ip_window.clear()
                 self.src_mac_window.clear()
                 self.proto_window.clear()
+                self._dst_port_window.clear()
             else:
                 self.last_entropy = 0.0
                 self.attack_status = 0
@@ -325,6 +333,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                 if p_icmp:
                     self.proto_window.append('icmp')
                 elif p_tcp:
+                    self._dst_port_window.append(p_tcp.dst_port)
                     if (p_tcp.bits & 0x02) and not (p_tcp.bits & 0x10):
                         if p_tcp.dst_port == 80 or p_tcp.dst_port == 443:
                             self.proto_window.append('tcp_http')
@@ -333,6 +342,7 @@ class SimpleRouterEntropy(simple_switch_13.SimpleSwitch13):
                     else:
                         self.proto_window.append('tcp')
                 elif p_udp:
+                    self._dst_port_window.append(p_udp.dst_port)
                     if p_udp.dst_port == 53:
                         self.proto_window.append('udp_dns')
                     else:
