@@ -1,0 +1,3 @@
+{"timestamp": 1778480717.5638938, "src_ip": "10.0.1.10", "attack": "spoofed_flood", "severity": "INFO", "n_rules": 3, "action": "Logged", "evidence": [{"source": "timeout_detect"}]}
+{"timestamp": 1778480719.1000254, "src_ip": "10.0.1.10", "attack": "spoofed_flood", "severity": "WARN", "n_rules": 3, "action": "Rate-Limited", "evidence": [{"source": "timeout_detect"}]}
+{"timestamp": 1778480720.2376764, "src_ip": "10.0.1.10", "attack": "spoofed_flood", "severity": "CRITICAL", "n_rules": 3, "action": "Blocked", "evidence": [{"source": "timeout_detect"}]}
