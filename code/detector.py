@@ -82,6 +82,16 @@ def extract_features(flows):
             dst_port_counts[dst_port] += delta_pkt
             
         ip_proto = match.get('ip_proto') or match.get('nw_proto')
+        
+        # Fallback: suy doan protocol tu port fields neu ip_proto khong co
+        if ip_proto is None:
+            if 'tcp_src' in match or 'tcp_dst' in match or 'tcp_flags' in match:
+                ip_proto = 6  # TCP
+            elif 'udp_src' in match or 'udp_dst' in match:
+                ip_proto = 17  # UDP
+            elif 'icmpv4_type' in match or 'icmpv4_code' in match:
+                ip_proto = 1  # ICMP
+        
         if ip_proto == 1:
             icmp_packets += delta_pkt
         elif ip_proto == 17:

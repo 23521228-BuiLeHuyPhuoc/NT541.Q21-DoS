@@ -97,7 +97,7 @@ mininet> h_att1 bash code/attack_scripts/s03_icmp.sh
 | Entropy | ~0 (1 source IP) |
 | PPS | >500 |
 | Loại tấn công | s03_icmp_flood |
-| Signature | icmp_pct>0.5 AND pps>500 |
+| Signature | icmp_pct>0.5 AND entropy_src<2.0 AND pps>500 |
 | Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
 ---
@@ -207,10 +207,10 @@ mininet> h_att1 bash code/attack_scripts/s08_flash_crowd.sh
 | Loại tấn công | KHÔNG PHÁT HIỆN |
 | Dashboard | Trạng thái: Bình thường, KHÔNG có IP bị chặn |
 
-**Giải thích:** Flash crowd mô phỏng nhiều người dùng hợp pháp truy cập cùng lúc. Hệ thống KHÔNG phát hiện là tấn công vì:
-- PPS mỗi nguồn rất thấp (<200)
-- Tất cả IP nguồn đều nằm trong whitelist
-- Entropy vừa phải (không quá thấp cũng không quá cao)
+**Giải thích:** Flash crowd mô phỏng 1 người dùng hợp pháp truy cập nhiều dịch vụ cùng lúc (port 80, 443, 8080, 8888, 22, 21). Hệ thống KHÔNG phát hiện là tấn công vì:
+- PPS tổng thấp (~120, mỗi phiên ~20 pps)
+- IP nguồn THẬT (10.0.1.10), không spoofing
+- Nhiều port đích khác nhau (entropy dst_port cao)
 - Không match bất kỳ signature tấn công nào
 
 ---
