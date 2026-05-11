@@ -245,8 +245,8 @@ def main():
                     # Neu stat_det hoac ent_det cung phat hien -> tin tuong la tan cong that
                     sig_pps = features.get("pps", 0)
                     only_sig = not ent_res.get("anomaly") and not stat_res.get("anomaly")
-                    if "flood" in attack_type and sig_pps < 200 and only_sig:
-                        n_rules = 0  # Chi signature match, PPS thap, khong co evidence khac
+                    if "flood" in attack_type and sig_pps < 50 and only_sig:
+                        n_rules = 0  # Chi signature match, PPS qua thap, khong co evidence khac
                 elif n_rules > 0:
                     # Fallback: suy doan attack type tu features kha dung
                     pps_val = features.get("pps", 0)
@@ -378,4 +378,4 @@ def main():
     except Exception as e: print(f"Error: {e}")
 
 if __name__ == "__main__":
-    main()
+    main()
