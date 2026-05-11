@@ -304,7 +304,7 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 
 ### s04: HTTP Flood — `hping3 -S -p 80 -i u500 VICTIM`
 - `-i u500`: 2000 pps (chậm hơn SYN flood)
-- **Detection:** tcp_pct >0.8 + 300 < PPS < 3000 → match s04 (không phải s01)
+- **Detection:** tcp_pct >0.8 + 100 < PPS < 3000 → match s04 (không phải s01)
 
 ### s05: DNS Amplification — `hping3 --udp -p 53 --rand-source -i u500 DNS`
 - `--rand-source`: giả mạo IP nguồn → entropy rất cao
@@ -319,8 +319,8 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 - `-i u10000`: chỉ 100 pps (tấn công chậm)
 - **Detection:** tcp_pct >0.5 + 30 < PPS < 300 + entropy <1.5 → match s07
 
-### s08: Flash Crowd — 6 user hợp pháp, mỗi user 20 pps
-- **KHÔNG bị chặn** vì: IP trong whitelist, PPS thấp, nhiều port, entropy vừa phải
+### s08: Flash Crowd — 1 user hợp pháp, nhiều kết nối
+- **KHÔNG bị chặn** vì: IP thật không spoofing, PPS thấp, nhiều port khác nhau, entropy port cao, entropy IP thấp.
 
 ---
 
@@ -331,11 +331,11 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 | s01 SYN Flood | ~0 | >3000 | Entropy + Stats + Signature | IP |
 | s02 UDP Flood | ~0 | >500 | Entropy + Stats + Signature | IP |
 | s03 ICMP Flood | ~0 | >500 | Stats + Signature | IP |
-| s04 HTTP Flood | ~0 | 300-3000 | Entropy + Stats + Signature | IP |
+| s04 HTTP Flood | ~0 | 100-3000 | Entropy + Stats + Signature | IP |
 | s05 DNS Ampl | ~9 | >500 | Packet_in (UDP:53 + spoof) | MAC |
 | s06 IP Spoof | ~9 | >500 | Packet_in (TCP + spoof) | MAC |
 | s07 Slowloris | ~0 | 30-300 | Stats + Signature | IP |
-| s08 Flash Crowd | ~2.5 | ~120 | **Không phát hiện** | **Không** |
+| s08 Flash Crowd | ~0 | ~120 | **Không phát hiện** | **Không** |
 
 ---
 
