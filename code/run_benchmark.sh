@@ -37,6 +37,30 @@ SCENARIOS=(
 mkdir -p "$RESULTS_DIR"
 
 # =============================================================
+# HAM CHAY LENH TREN MININET HOST
+# =============================================================
+run_on_host() {
+    local host="$1"
+    shift
+    
+    # Tim PID cua Mininet host
+    local pid
+    pid=$(pgrep -f "mininet:$host" 2>/dev/null | head -1)
+    
+    if [ -z "$pid" ]; then
+        echo "[ERROR] Khong tim thay host $host trong Mininet"
+        return 1
+    fi
+    
+    # Dung mnexec neu co, khong thi dung nsenter
+    if command -v mnexec &>/dev/null; then
+        mnexec -a "$pid" "$@"
+    else
+        nsenter --target "$pid" --net --pid -- "$@"
+    fi
+}
+
+# =============================================================
 # HAM THU THAP METRIC
 # =============================================================
 collect_metrics() {
@@ -109,8 +133,8 @@ run_scenario() {
     echo "[BENCHMARK] Bat dau tan cong: $script ($ATTACK_DURATION giay)..."
     local attack_start=$(date +%s)
     
-    # Chay tan cong tren h_att1 qua Mininet utility 'm'
-    m h_att1 bash "$ATTACK_DIR/$script" &
+    # Chay tan cong tren h_att1 qua namespace
+    run_on_host h_att1 bash "$ATTACK_DIR/$script" &
     ATTACK_PID=$!
     
     # Thu thap metric moi giay trong khi tan cong
