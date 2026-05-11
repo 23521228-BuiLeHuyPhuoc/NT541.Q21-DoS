@@ -1,0 +1,9 @@
+{
+    "id": "s05_dns_ampl",
+    "name": "DNS Amplification",
+    "script": "s05_dns_ampl.sh",
+    "attack_duration": 20,
+    "attack_start": 1778467365,
+    "attack_end": 1778467402,
+    "timestamp": "2026-05-10 19:43:40"
+}

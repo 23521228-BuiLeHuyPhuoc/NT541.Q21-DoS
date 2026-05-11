@@ -1,0 +1,9 @@
+{
+    "id": "s02_udp",
+    "name": "UDP Flood",
+    "script": "s02_udp.sh",
+    "attack_duration": 20,
+    "attack_start": 1778467830,
+    "attack_end": 1778467853,
+    "timestamp": "2026-05-10 19:51:04"
+}
