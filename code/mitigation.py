@@ -8,10 +8,18 @@ class BlockModule:
 
     def apply(self, dp, src_ip, timeout=60):
         parser = dp.ofproto_parser
+        # Cai rieng cho tung giao thuc de detector van doc duoc ip_proto
+        for proto in [1, 6, 17]:
+            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip, ip_proto=proto)
+            mod = parser.OFPFlowMod(datapath=dp, priority=100,
+                                    match=match, instructions=[],
+                                    hard_timeout=timeout)
+            dp.send_msg(mod)
+            
+        # Generic block cho cac loai protocol khac
         match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
-        inst = []  
-        mod = parser.OFPFlowMod(datapath=dp, priority=100,
-                                match=match, instructions=inst,
+        mod = parser.OFPFlowMod(datapath=dp, priority=99,
+                                match=match, instructions=[],
                                 hard_timeout=timeout)
         dp.send_msg(mod)
 
@@ -31,12 +39,22 @@ class RateLimitModule:
                                   flags=ofp.OFPMF_PKTPS,
                                   meter_id=mid, bands=[band])
         dp.send_msg(mmod)
-        match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
+        # Cai rieng cho tung giao thuc de giu ip_proto
         inst = [parser.OFPInstructionMeter(meter_id=mid),
                 parser.OFPInstructionActions(
                     ofp.OFPIT_APPLY_ACTIONS,
                     [parser.OFPActionOutput(ofp.OFPP_NORMAL)])]
-        fmod = parser.OFPFlowMod(datapath=dp, priority=80,
+                    
+        for proto in [1, 6, 17]:
+            match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip, ip_proto=proto)
+            fmod = parser.OFPFlowMod(datapath=dp, priority=80,
+                                     match=match, instructions=inst,
+                                     hard_timeout=120)
+            dp.send_msg(fmod)
+            
+        # Generic rate-limit cho cac loai khac
+        match = parser.OFPMatch(eth_type=0x0800, ipv4_src=src_ip)
+        fmod = parser.OFPFlowMod(datapath=dp, priority=79,
                                  match=match, instructions=inst,
                                  hard_timeout=120)
         dp.send_msg(fmod)

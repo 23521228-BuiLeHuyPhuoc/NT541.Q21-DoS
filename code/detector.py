@@ -82,13 +82,21 @@ def extract_features(flows):
             dst_port_counts[dst_port] += delta_pkt
             
         ip_proto = match.get('ip_proto') or match.get('nw_proto')
+        
+        # Neu van chua tim thay, quet toan bo cac key trong match xem co chua 'proto' khong
+        if ip_proto is None:
+            for k, v in match.items():
+                if 'proto' in k.lower():
+                    ip_proto = v
+                    break
+        
         if ip_proto is not None:
             try:
                 ip_proto = int(ip_proto)
             except ValueError:
                 pass
         
-        # Fallback: suy doan protocol tu port fields neu ip_proto khong co
+        # Fallback: suy doan protocol tu port fields neu ip_proto van khong co
         if ip_proto is None:
             if 'tcp_src' in match or 'tcp_dst' in match or 'tcp_flags' in match:
                 ip_proto = 6  # TCP
