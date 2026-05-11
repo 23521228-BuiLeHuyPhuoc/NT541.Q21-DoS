@@ -261,7 +261,7 @@ def main():
                         attack_type = "single_src_flood"
                     elif features.get("entropy_src", 0) > 3.5:
                         attack_type = "spoofed_flood"
-                    elif features.get("tcp_pct", 0) > 0.3 and pps_val > 30 and entropy_val < 1.5:
+                    elif features.get("tcp_pct", 0) > 0.3 and pps_val > 30 and entropy_val < 1.5 and features.get("entropy_dst_port", 5) < 1.5:
                         attack_type = "s07_slowloris"
                     else:
                         # Traffic co anomaly nhung khong match pattern nao
