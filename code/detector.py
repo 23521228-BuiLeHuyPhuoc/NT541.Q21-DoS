@@ -220,7 +220,7 @@ def main():
                     # Fallback: suy doan attack type tu features kha dung
                     pps_val = features.get("pps", 0)
                     entropy_val = features.get("entropy_src", 5)
-                    if features.get("icmp_pct", 0) > 0.3:
+                    if features.get("icmp_pct", 0) > 0.3 and pps_val > 500 and entropy_val < 2.0:
                         attack_type = "icmp_flood"
                     elif features.get("udp_pct", 0) > 0.3:
                         attack_type = "udp_flood"

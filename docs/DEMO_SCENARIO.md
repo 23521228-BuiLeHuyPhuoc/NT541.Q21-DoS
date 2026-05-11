@@ -5,7 +5,7 @@
 ### Terminal 1: Ryu Controller
 ```bash
 cd ~/NT541.Q21-DoS
-ryu-manager --ofp-tcp-listen-port 6653 --wsapi-port 8081 code/l3_router_extended.py
+ryu-manager --ofp-tcp-listen-port 6653 ryu.app.ofctl_rest code/l3_router_extended.py --wsapi-port 8081 --observe-links
 ```
 
 ### Terminal 2: Mininet Topology
