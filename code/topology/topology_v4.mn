@@ -1,0 +1,406 @@
+{
+    "application": {
+        "dpctl": "",
+        "ipBase": "10.0.0.0/8",
+        "netflow": {
+            "nflowAddId": "0",
+            "nflowTarget": "",
+            "nflowTimeout": "600"
+        },
+        "openFlowVersions": {
+            "ovsOf10": "0",
+            "ovsOf11": "0",
+            "ovsOf12": "0",
+            "ovsOf13": "1"
+        },
+        "sflow": {
+            "sflowHeader": "128",
+            "sflowPolling": "30",
+            "sflowSampling": "400",
+            "sflowTarget": ""
+        },
+        "startCLI": "1",
+        "switchType": "ovs",
+        "terminalType": "xterm"
+    },
+    "controllers": [
+        {
+            "opts": {
+                "controllerProtocol": "tcp",
+                "controllerType": "remote",
+                "hostname": "c0",
+                "remoteIP": "127.0.0.1",
+                "remotePort": 6653
+            },
+            "x": "500.0",
+            "y": "50.0"
+        }
+    ],
+    "hosts": [
+        {
+            "number": "1",
+            "opts": {
+                "defaultRoute": "via 10.0.1.1",
+                "hostname": "h_att1",
+                "ip": "10.0.1.10/24",
+                "nodeNum": 1
+            },
+            "x": "80.0",
+            "y": "80.0"
+        },
+        {
+            "number": "2",
+            "opts": {
+                "defaultRoute": "via 10.0.1.1",
+                "hostname": "h_att2",
+                "ip": "10.0.1.11/24",
+                "nodeNum": 2
+            },
+            "x": "80.0",
+            "y": "160.0"
+        },
+        {
+            "number": "3",
+            "opts": {
+                "defaultRoute": "via 10.0.1.1",
+                "hostname": "h_att3",
+                "ip": "10.0.1.12/24",
+                "nodeNum": 3
+            },
+            "x": "80.0",
+            "y": "240.0"
+        },
+        {
+            "number": "4",
+            "opts": {
+                "defaultRoute": "via 10.0.1.1",
+                "hostname": "h_ext1",
+                "ip": "10.0.1.20/24",
+                "nodeNum": 4
+            },
+            "x": "80.0",
+            "y": "320.0"
+        },
+        {
+            "number": "5",
+            "opts": {
+                "defaultRoute": "via 10.0.2.1",
+                "hostname": "h_web1",
+                "ip": "10.0.2.10/24",
+                "nodeNum": 5
+            },
+            "x": "920.0",
+            "y": "120.0"
+        },
+        {
+            "number": "6",
+            "opts": {
+                "defaultRoute": "via 10.0.2.1",
+                "hostname": "h_dns1",
+                "ip": "10.0.2.11/24",
+                "nodeNum": 6
+            },
+            "x": "920.0",
+            "y": "240.0"
+        },
+        {
+            "number": "7",
+            "opts": {
+                "defaultRoute": "via 10.0.3.1",
+                "hostname": "h_db1",
+                "ip": "10.0.3.10/24",
+                "nodeNum": 7
+            },
+            "x": "920.0",
+            "y": "400.0"
+        },
+        {
+            "number": "8",
+            "opts": {
+                "defaultRoute": "via 10.0.3.1",
+                "hostname": "h_app1",
+                "ip": "10.0.3.11/24",
+                "nodeNum": 8
+            },
+            "x": "920.0",
+            "y": "520.0"
+        },
+        {
+            "number": "9",
+            "opts": {
+                "defaultRoute": "via 10.0.4.1",
+                "hostname": "h_pc1",
+                "ip": "10.0.4.10/24",
+                "nodeNum": 9
+            },
+            "x": "350.0",
+            "y": "550.0"
+        },
+        {
+            "number": "10",
+            "opts": {
+                "defaultRoute": "via 10.0.4.1",
+                "hostname": "h_pc2",
+                "ip": "10.0.4.11/24",
+                "nodeNum": 10
+            },
+            "x": "450.0",
+            "y": "550.0"
+        },
+        {
+            "number": "11",
+            "opts": {
+                "defaultRoute": "via 10.0.4.1",
+                "hostname": "h_pc3",
+                "ip": "10.0.4.12/24",
+                "nodeNum": 11
+            },
+            "x": "550.0",
+            "y": "550.0"
+        },
+        {
+            "number": "12",
+            "opts": {
+                "defaultRoute": "via 10.0.4.1",
+                "hostname": "h_pc4",
+                "ip": "10.0.4.13/24",
+                "nodeNum": 12
+            },
+            "x": "650.0",
+            "y": "550.0"
+        }
+    ],
+    "links": [
+        {
+            "dest": "s2",
+            "opts": {
+                "bw": 10,
+                "delay": "2ms"
+            },
+            "src": "s1"
+        },
+        {
+            "dest": "s2",
+            "opts": {
+                "bw": 100,
+                "delay": "1ms"
+            },
+            "src": "s3"
+        },
+        {
+            "dest": "s2",
+            "opts": {
+                "bw": 100,
+                "delay": "1ms"
+            },
+            "src": "s4"
+        },
+        {
+            "dest": "s2",
+            "opts": {
+                "bw": 50,
+                "delay": "1ms"
+            },
+            "src": "s5"
+        },
+        {
+            "dest": "s1",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_att1"
+        },
+        {
+            "dest": "s1",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_att2"
+        },
+        {
+            "dest": "s1",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_att3"
+        },
+        {
+            "dest": "s1",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_ext1"
+        },
+        {
+            "dest": "s3",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_web1"
+        },
+        {
+            "dest": "s3",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_dns1"
+        },
+        {
+            "dest": "s4",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_db1"
+        },
+        {
+            "dest": "s4",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_app1"
+        },
+        {
+            "dest": "s5",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_pc1"
+        },
+        {
+            "dest": "s5",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_pc2"
+        },
+        {
+            "dest": "s5",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_pc3"
+        },
+        {
+            "dest": "s5",
+            "opts": {
+                "bw": 100,
+                "delay": "0.5ms"
+            },
+            "src": "h_pc4"
+        }
+    ],
+    "switches": [
+        {
+            "number": "1",
+            "opts": {
+                "controllers": [
+                    "c0"
+                ],
+                "dpctl": "",
+                "dpid": "0000000000000001",
+                "hostname": "s1",
+                "netflow": "0",
+                "nodeNum": 1,
+                "sflow": "0",
+                "startCommand": "",
+                "stopCommand": "",
+                "switchIP": "",
+                "switchType": "ovs"
+            },
+            "x": "250.0",
+            "y": "200.0"
+        },
+        {
+            "number": "2",
+            "opts": {
+                "controllers": [
+                    "c0"
+                ],
+                "dpctl": "",
+                "dpid": "0000000000000002",
+                "hostname": "s2",
+                "netflow": "0",
+                "nodeNum": 2,
+                "sflow": "0",
+                "startCommand": "",
+                "stopCommand": "",
+                "switchIP": "",
+                "switchType": "ovs"
+            },
+            "x": "500.0",
+            "y": "280.0"
+        },
+        {
+            "number": "3",
+            "opts": {
+                "controllers": [
+                    "c0"
+                ],
+                "dpctl": "",
+                "dpid": "0000000000000003",
+                "hostname": "s3",
+                "netflow": "0",
+                "nodeNum": 3,
+                "sflow": "0",
+                "startCommand": "",
+                "stopCommand": "",
+                "switchIP": "",
+                "switchType": "ovs"
+            },
+            "x": "750.0",
+            "y": "180.0"
+        },
+        {
+            "number": "4",
+            "opts": {
+                "controllers": [
+                    "c0"
+                ],
+                "dpctl": "",
+                "dpid": "0000000000000004",
+                "hostname": "s4",
+                "netflow": "0",
+                "nodeNum": 4,
+                "sflow": "0",
+                "startCommand": "",
+                "stopCommand": "",
+                "switchIP": "",
+                "switchType": "ovs"
+            },
+            "x": "750.0",
+            "y": "460.0"
+        },
+        {
+            "number": "5",
+            "opts": {
+                "controllers": [
+                    "c0"
+                ],
+                "dpctl": "",
+                "dpid": "0000000000000005",
+                "hostname": "s5",
+                "netflow": "0",
+                "nodeNum": 5,
+                "sflow": "0",
+                "startCommand": "",
+                "stopCommand": "",
+                "switchIP": "",
+                "switchType": "ovs"
+            },
+            "x": "500.0",
+            "y": "460.0"
+        }
+    ],
+    "version": "2"
+}
