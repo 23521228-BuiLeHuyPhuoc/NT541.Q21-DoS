@@ -47,9 +47,9 @@ mininet> h_att1 bash code/attack_scripts/s01_syn.sh
 | Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
-| PPS | >3000 |
+| PPS | >1000 |
 | Loại tấn công | s01_syn_flood |
-| Signature | tcp_pct>0.5 AND entropy_src<1.5 AND pps>3000 |
+| Signature | tcp_pct>0.8 AND entropy_src<1.5 AND pps>1000 |
 | Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
 **Detector log:**
@@ -115,12 +115,12 @@ mininet> h_att1 bash code/attack_scripts/s04_http.sh
 | Metric | Giá trị |
 |--------|---------|
 | Entropy | ~0 (1 source IP) |
-| PPS | 300-3000 |
+| PPS | 300-1000 |
 | Loại tấn công | s04_http_flood |
-| Signature | tcp_pct>0.8 AND entropy_src<1.5 AND pps>100 AND pps<3000 |
+| Signature | tcp_pct>0.8 AND entropy_src<1.5 AND pps>300 AND pps<=1000 AND entropy_dst_port<1.5 |
 | Dashboard | Trạng thái: TẤN CÔNG, IP 10.0.1.10 bị chặn |
 
-**Phân biệt với SYN Flood:** PPS thấp hơn (100-3000 vs >3000)
+**Phân biệt với SYN Flood:** PPS thấp hơn (300-1000 vs >1000) và mục tiêu là 1 port (entropy_dst_port < 1.5).
 
 ---
 
@@ -219,10 +219,10 @@ mininet> h_att1 bash code/attack_scripts/s08_flash_crowd.sh
 
 | Kịch bản | Entropy | PPS | Protocol | Phát hiện | Chặn |
 |----------|---------|-----|----------|-----------|------|
-| s01 SYN Flood | ~0 | >3000 | TCP | Signature + Stat | IP |
+| s01 SYN Flood | ~0 | >1000 | TCP | Signature + Stat | IP |
 | s02 UDP Flood | ~0 | >500 | UDP | Signature + Stat | IP |
 | s03 ICMP Flood | ~0 | >500 | ICMP | Signature + Stat | IP |
-| s04 HTTP Flood | ~0 | 100-3000 | TCP | Signature + Stat | IP |
+| s04 HTTP Flood | ~0 | 300-1000| TCP | Signature + Stat | IP |
 | s05 DNS Ampl | ~9-10 | >500 | UDP:53 | Packet_in (spoof) | MAC |
 | s06 IP Spoof | ~9-10 | >500 | TCP | Packet_in (spoof) | MAC |
 | s07 Slowloris | ~0 | 30-300 | TCP | Signature + Stat | IP |

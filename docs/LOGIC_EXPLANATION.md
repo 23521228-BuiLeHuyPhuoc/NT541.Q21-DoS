@@ -21,6 +21,21 @@
          +------------------+
 ```
 
+### Cơ chế phát hiện (Detection Mechanisms)
+Hệ thống sử dụng phương pháp phát hiện kết hợp đa tầng (Multi-layer Detection) để đảm bảo độ chính xác cao và giảm false positive:
+1. **Phân tích Entropy (Tầng 1):** Giám sát sự phân tán của IP nguồn và Port đích. Nếu IP nguồn tập trung (entropy thấp) -> nghi ngờ Flood 1 nguồn. Nếu IP nguồn phân tán (entropy cao) -> nghi ngờ Spoofing. Nếu Port đích phân tán -> Flash Crowd.
+2. **Phân tích Thống kê (Tầng 2):** Đo đạc tốc độ gói tin (PPS) và dùng các thuật toán như Z-Score, EWMA, CUSUM để phát hiện sự đột biến so với baseline lúc bình thường.
+3. **So khớp Chữ ký (Tầng 3):** Sử dụng `attack_signatures.csv` để khớp chính xác các thông số (pps, tcp_pct, entropy) vào từng kịch bản cụ thể (SYN, ICMP, Slowloris, v.v.).
+4. **Phát hiện Packet_In (Spoofing):** Đối với các cuộc tấn công giả mạo IP liên tục (IP Spoof, DNS Amplification), switch không gom được luồng (flow miss liên tục). Controller sẽ phân tích trực tiếp rate của gói tin `packet_in` để phát hiện.
+
+### Cơ chế ngăn chặn (Mitigation Mechanisms)
+Hệ thống áp dụng cơ chế phản ứng tăng dần (Graduated Response) gồm 3 cấp độ:
+1. **Cấp 1 - Ghi nhận (Log):** Cảnh báo mức nhẹ, theo dõi động thái của IP nghi ngờ mà chưa can thiệp vào luồng traffic.
+2. **Cấp 2 - Giới hạn tốc độ (Rate-Limit):** Áp dụng OpenFlow Meter để bóp băng thông (giới hạn PPS) của IP tấn công, giúp bảo vệ server nhưng không cắt đứt hoàn toàn kết nối.
+3. **Cấp 3 - Chặn hoàn toàn (Block):** Cài đặt Flow Rule ưu tiên cao (priority=100) để DROP (loại bỏ) toàn bộ gói tin từ Attacker.
+   - **Block theo IP:** Áp dụng cho các tấn công từ 1 nguồn cố định (SYN, UDP, HTTP, Slowloris).
+   - **Block theo MAC:** Áp dụng cho các tấn công giả mạo IP nguồn (Spoofing, DNS Amplification), vì IP thay đổi liên tục nhưng MAC của kẻ tấn công là cố định.
+
 ---
 
 ## 2. Tầng 1: Entropy Detector (`entropy.py`)
@@ -205,15 +220,15 @@ if sig_hits: n_rules += len(sig_hits)      # Signature match → +N
 ```python
 def match(self, features):
     for r in self.rules:
-        rule_text = r.get('rule', '')           # "tcp_pct>0.5 AND pps>3000"
+        rule_text = r.get('rule', '')           # "tcp_pct>0.8 AND pps>1000"
         if safe_eval(rule_text, features):       # Đánh giá rule với features hiện tại
             hits.append({"attack": r['name']})   # Match → thêm vào kết quả
     hits.sort(key=lambda h: h["_specificity"], reverse=True)
 ```
 
 `safe_eval` parse rule thành AST Python và đánh giá an toàn:
-- Input: `"tcp_pct>0.5 AND pps>3000"`, features = `{"tcp_pct": 0.95, "pps": 5000}`
-- Kết quả: `0.95 > 0.5 AND 5000 > 3000` → `True` → match s01_syn_flood
+- Input: `"tcp_pct>0.8 AND pps>1000"`, features = `{"tcp_pct": 0.95, "pps": 5000}`
+- Kết quả: `0.95 > 0.8 AND 5000 > 1000` → `True` → match s01_syn_flood
 
 ---
 
@@ -293,8 +308,8 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 ## 7. Logic các kịch bản tấn công
 
 ### s01: SYN Flood — `hping3 -S -p 80 --flood VICTIM`
-- `--flood`: gửi nhanh nhất có thể (>3000 pps)
-- **Detection:** Entropy ~0 (1 IP) + PPS >3000 + tcp_pct ~1.0 → match signature s01
+- `--flood`: gửi nhanh nhất có thể (>1000 pps)
+- **Detection:** Entropy ~0 (1 IP) + PPS >1000 + tcp_pct ~1.0 → match signature s01
 
 ### s02: UDP Flood — `hping3 --udp -p 53 --flood VICTIM`
 - **Detection:** Entropy ~0 + PPS >500 + udp_pct >0.5 → match signature s02
@@ -302,9 +317,10 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 ### s03: ICMP Flood — `hping3 -1 --flood VICTIM`
 - **Detection:** PPS >500 + icmp_pct >0.5 → match signature s03
 
-### s04: HTTP Flood — `hping3 -S -p 80 -i u500 VICTIM`
-- `-i u500`: 2000 pps (chậm hơn SYN flood)
-- **Detection:** tcp_pct >0.8 + 100 < PPS < 3000 → match s04 (không phải s01)
+### s04: HTTP Flood — `hping3 -S -p 80 -i u1000 VICTIM`
+- `-i u1000`: ~1000 pps (chậm hơn SYN flood)
+- **Detection:** tcp_pct >0.8 + 300 < PPS <= 1000 + entropy_dst_port < 1.5 → match s04
+- **Phân biệt:** Dùng PPS để phân biệt với SYN Flood (>1000). Dùng entropy_dst_port thấp (<1.5 vì chỉ nhắm vào 1 port 80) để phân biệt với Flash Crowd.
 
 ### s05: DNS Amplification — `hping3 --udp -p 53 --rand-source -i u500 DNS`
 - `--rand-source`: giả mạo IP nguồn → entropy rất cao
@@ -318,9 +334,10 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 ### s07: Slowloris — `hping3 -S -p 80 -i u10000 VICTIM`
 - `-i u10000`: chỉ 100 pps (tấn công chậm)
 - **Detection:** tcp_pct >0.5 + 30 < PPS < 300 + entropy <1.5 → match s07
+- **Phân biệt:** Chậm hơn HTTP Flood (PPS < 300 so với > 300 của HTTP Flood).
 
 ### s08: Flash Crowd — 1 user hợp pháp, nhiều kết nối
-- **KHÔNG bị chặn** vì: IP thật không spoofing, PPS thấp, nhiều port khác nhau, entropy port cao, entropy IP thấp.
+- **KHÔNG bị chặn** vì: Nhiều port đích khác nhau (entropy port cao > 1.5) giúp hệ thống nhận diện đây là người dùng mở nhiều trang web, loại trừ luật HTTP Flood. PPS thấp (~120).
 
 ---
 
@@ -328,10 +345,10 @@ FlowMod(priority=80, match=match, instructions=inst, hard_timeout=120)
 
 | Kịch bản | Entropy | PPS | Phát hiện bởi | Chặn |
 |----------|---------|-----|---------------|------|
-| s01 SYN Flood | ~0 | >3000 | Entropy + Stats + Signature | IP |
+| s01 SYN Flood | ~0 | >1000 | Entropy + Stats + Signature | IP |
 | s02 UDP Flood | ~0 | >500 | Entropy + Stats + Signature | IP |
 | s03 ICMP Flood | ~0 | >500 | Stats + Signature | IP |
-| s04 HTTP Flood | ~0 | 100-3000 | Entropy + Stats + Signature | IP |
+| s04 HTTP Flood | ~0 | 300-1000 | Entropy + Stats + Signature | IP |
 | s05 DNS Ampl | ~9 | >500 | Packet_in (UDP:53 + spoof) | MAC |
 | s06 IP Spoof | ~9 | >500 | Packet_in (TCP + spoof) | MAC |
 | s07 Slowloris | ~0 | 30-300 | Stats + Signature | IP |
